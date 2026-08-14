@@ -19,3 +19,6 @@ def profile(user_id):
 
     email, created_at = utilizador
     return jsonify({"email": email, "created_at": created_at})
+
+
+

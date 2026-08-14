@@ -7,9 +7,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+
     "ios": {
       "supportsTablet": true
     },
+
     "android": {
       "package": "com.sabino.ironeye",
       "adaptiveIcon": {
@@ -17,14 +19,23 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      } 
+      }
     },
+
     "web": {
       "favicon": "./assets/favicon.png"
     },
+
     "plugins": [
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-4830237129231721~1426711390"
+        }
+      ]
     ],
+
     "extra": {
       "eas": {
         "projectId": "fad39a5a-2f21-47f3-a8c3-29e4cdcb494b"
