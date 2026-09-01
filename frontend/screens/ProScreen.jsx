@@ -1,31 +1,70 @@
+import { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { Crown, Infinity, Clock } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Purchases from "react-native-purchases";
+import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 import { API_URL } from "../config";
 
 export default function ProScreen({ navigation }) {
-  async function subscrever() {
+  const [isPremium, setIsPremium] = useState(false);
+
+  useEffect(() => {
+    checkEntitlement();
+  }, []);
+
+  async function checkEntitlement() {
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      if (typeof customerInfo.entitlements.active["IronEye Pro"] !== "undefined") {
+        setIsPremium(true);
+      }
+    } catch (e) {
+      console.error("Erro ao verificar entitlement:", e);
+    }
+  }
+
+  // Função simples para avisar o backend que o utilizador comprou o plano Pro
+  async function sincronizarComBackend() {
     try {
       const token = await AsyncStorage.getItem("token");
+      if (!token) return;
 
-      const resposta = await fetch(`${API_URL}/pro`, {
+      // Chama a rota criada no backend para ativar o Pro na base de dados
+      await fetch(`${API_URL}/subscription/verify`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
       });
+    } catch (e) {
+      console.error("Erro ao sincronizar com o backend:", e);
+    }
+  }
 
-      const dados = await resposta.json();
+  async function subscrever() {
+    try {
+      // Abre o ecrã nativo de pagamento do RevenueCat
+      const paywallResult = await RevenueCatUI.presentPaywall();
 
-      if (!resposta.ok) {
-        Alert.alert("Erro", dados.erro);
-        return;
+      switch (paywallResult) {
+        case PAYWALL_RESULT.PURCHASED:
+        case PAYWALL_RESULT.RESTORED:
+          // 1. Atualiza o ecrã para dizer que já é Pro
+          setIsPremium(true);
+          // 2. Avisa o backend para atualizar os 20 scans diários na BD
+          await sincronizarComBackend();
+          Alert.alert("IronEye Pro", "Subscrição ativada com sucesso!");
+          break;
+        case PAYWALL_RESULT.CANCELLED:
+        case PAYWALL_RESULT.ERROR:
+        case PAYWALL_RESULT.NOT_PRESENTED:
+        default:
+          break;
       }
-
-      Alert.alert("IronEye Pro", dados.mensagem);
     } catch (erro) {
-      Alert.alert("Erro", "Não foi possível ligar ao servidor.");
+      Alert.alert("Erro", "Não foi possível abrir o ecrã de compra.");
     }
   }
 
@@ -74,9 +113,13 @@ export default function ProScreen({ navigation }) {
         <Text style={styles.precoNota}>Cancel anytime. No commitment.</Text>
       </View>
 
-      <TouchableOpacity style={styles.botaoSubscrever} onPress={subscrever}>
-        <Text style={styles.botaoTexto}>Go Pro</Text>
-      </TouchableOpacity>
+      {isPremium ? (
+        <Text style={styles.botaoTexto}>Já és IronEye Pro ✅</Text>
+      ) : (
+        <TouchableOpacity style={styles.botaoSubscrever} onPress={subscrever}>
+          <Text style={styles.botaoTexto}>Go Pro</Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity onPress={() => navigation.goBack()}>
         <Text style={styles.voltar}>Maybe later</Text>

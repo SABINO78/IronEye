@@ -14,8 +14,7 @@ import {
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-
-const API_URL = "http://192.168.1.73:5000";
+import { API_URL } from "../config";
 
 const IDIOMA_ATUAL = "pt";
 

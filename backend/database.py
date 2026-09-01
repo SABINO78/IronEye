@@ -1,8 +1,12 @@
 import sqlite3
+import os
 
+# Garante que a base de dados fica sempre guardada na pasta do backend
+PASTA_BACKEND = os.path.dirname(os.path.abspath(__file__))
+CAMINHO_DB = os.path.join(PASTA_BACKEND, "ironeye.db")
 
 def get_db():
-    return sqlite3.connect("ironeye.db")
+    return sqlite3.connect(CAMINHO_DB)
 
 
 def criar_tabela():
@@ -28,7 +32,7 @@ def criar_tabela():
 
             bonus_scans_hoje INTEGER DEFAULT 0,
 
-            bonus_scan_data TEXT
+            bonus_scans_data TEXT
         )
     """)
 

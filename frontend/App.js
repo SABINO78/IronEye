@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, ActivityIndicator } from "react-native";
+import { StyleSheet, View, ActivityIndicator, Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Purchases, { LOG_LEVEL } from "react-native-purchases";
 
 import AuthScreen from "./screens/AuthScreen";
 import HomeScreen from "./screens/HomeScreen";
@@ -22,6 +23,14 @@ export default function App() {
 
   useEffect(() => {
     verificarLogin();
+  }, []);
+
+  useEffect(() => {
+    Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
+    const androidApiKey = "goog_PBftHZeZmBiYZsmVPucKgcFQrtw";
+    if (Platform.OS === "android") {
+      Purchases.configure({ apiKey: androidApiKey });
+    }
   }, []);
 
   async function verificarLogin() {
@@ -52,7 +61,9 @@ export default function App() {
             <Stack.Screen name="Home">
               {(props) => <HomeScreen {...props} onLogout={() => setIsLogado(false)} />}
             </Stack.Screen>
-            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Profile">
+              {(props) => <ProfileScreen {...props} onLogout={() => setIsLogado(false)} />}
+            </Stack.Screen>
             <Stack.Screen name="Pro" component={ProScreen} />
             <Stack.Screen name="History" component={HistoryScreen} />
             <Stack.Screen name="ScanDetails" component={ScanDetails} />

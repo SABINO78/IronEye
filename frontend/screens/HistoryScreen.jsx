@@ -52,6 +52,14 @@ export default function HistoryScreen({ navigation }) {
   return (
     <View style={styles.container}>
 
+      {/* Botão de voltar */}
+      <TouchableOpacity
+        style={styles.botaoVoltar}
+        onPress={() => navigation.goBack()}
+      >
+        <Text style={styles.voltarTexto}>← Voltar</Text>
+      </TouchableOpacity>
+
       <Text style={styles.titulo}>Histórico</Text>
 
       <FlatList
@@ -125,6 +133,17 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     marginBottom: 20,
+  },
+
+  botaoVoltar: {
+    paddingVertical: 10,
+    marginBottom: 10,
+  },
+
+  voltarTexto: {
+    color: "#FF8C00",
+    fontSize: 16,
+    fontWeight: "600",
   },
 
   card: {

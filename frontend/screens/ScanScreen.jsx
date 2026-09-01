@@ -23,6 +23,8 @@ import {
     TestIds,
 } from "react-native-google-mobile-ads";
 
+import { API_URL } from "../config";
+
 
 /* =====================================================
    ADMOB
@@ -43,11 +45,8 @@ const AD_UNIT_ID = TestIds.REWARDED;
 // const AD_UNIT_ID = ID_BLOCO_AD;
 
 
-/* =====================================================
-   API
-===================================================== */
 
-const API_URL = "http://192.168.1.73:5000";
+
 
 
 /* =====================================================

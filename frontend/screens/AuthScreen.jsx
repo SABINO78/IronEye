@@ -30,15 +30,14 @@ export default function AuthScreen({ navigation, onLogin }) {
       const dados = await resposta.json();
 
       if (!resposta.ok) {
-        setErro(dados.erro);
+        setErro(dados.erro || "Ocorreu um erro");
         return;
       }
 
-      if (modo === "login") {
+      // Se o backend devolveu o token (seja login ou registo), entra logo na app
+      if (dados.token) {
         await AsyncStorage.setItem("token", dados.token);
         onLogin();
-      } else {
-        setModo("login");
       }
     } catch (erro) {
       setErro("Sem ligação ao servidor");

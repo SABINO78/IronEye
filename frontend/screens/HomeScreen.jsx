@@ -12,7 +12,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import {
     Camera as CameraIcon,
     LogOut,
-    User
+    User,
+    Clock
 } from "lucide-react-native";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -65,6 +66,12 @@ export default function Home({ navigation, onLogout }) {
                 setDashboard(dados);
 
             } else {
+
+                // Se a sessão expirou ou o utilizador não existe na base de dados, faz logout automático
+                if (resposta.status === 401 || resposta.status === 404) {
+                    await logout();
+                    return;
+                }
 
                 setErro(
                     dados.erro || "Não foi possível carregar os dados"
@@ -127,7 +134,18 @@ export default function Home({ navigation, onLogout }) {
 
                 <View style={styles.headerBotoes}>
 
+                    {/* Botão de Histórico */}
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate("History")}
+                        style={styles.iconBotao}
+                    >
+                        <Clock
+                            color="#FF7A1A"
+                            size={20}
+                        />
+                    </TouchableOpacity>
 
+                    {/* Botão de Perfil */}
                     <TouchableOpacity
                         onPress={() => navigation.navigate("Profile")}
                         style={styles.iconBotao}
@@ -140,7 +158,7 @@ export default function Home({ navigation, onLogout }) {
 
                     </TouchableOpacity>
 
-
+                    {/* Botão de Terminar Sessão */}
                     <TouchableOpacity
                         onPress={logout}
                         style={styles.iconBotao}
@@ -169,13 +187,13 @@ export default function Home({ navigation, onLogout }) {
 
 
                         <Text style={styles.cardTitulo}>
-                            ⚡ Free scans
+                            {dashboard.is_pro ? "👑 Pro Scans" : "⚡ Daily Scans"}
                         </Text>
 
 
                         <Text style={styles.cardValor}>
 
-                            {dashboard.scans_restantes}/4 left
+                            {dashboard.scans_restantes}/{dashboard.limite_diario || 4} left
 
                         </Text>
 
@@ -190,7 +208,7 @@ export default function Home({ navigation, onLogout }) {
                             style={[
                                 styles.barraProgresso,
                                 {
-                                    width: `${(dashboard.scans_restantes / 4) * 100}%`
+                                    width: `${Math.min(100, Math.max(0, (dashboard.scans_restantes / (dashboard.limite_diario || 4)) * 100))}%`
                                 }
                             ]}
                         />
@@ -199,15 +217,15 @@ export default function Home({ navigation, onLogout }) {
                     </View>
 
 
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate("Pro")}
-                    >
-
-                        <Text style={styles.linkPro}>
-                            Get unlimited scans →
-                        </Text>
-
-                    </TouchableOpacity>
+                    {!dashboard.is_pro && (
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate("Pro")}
+                        >
+                            <Text style={styles.linkPro}>
+                                Get unlimited scans →
+                            </Text>
+                        </TouchableOpacity>
+                    )}
 
 
                 </View>

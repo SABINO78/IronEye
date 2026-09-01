@@ -3,6 +3,7 @@ import sqlite3
 import jwt
 import os
 import requests as req_lib
+from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import get_db
 
@@ -11,7 +12,7 @@ auth_bp = Blueprint("auth", __name__)
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
-    dados = request.json
+    dados = request.json or {}
     email = dados.get("email")
     password = dados.get("password")
 
@@ -25,17 +26,20 @@ def register():
     try:
         c.execute("INSERT INTO users (email, password_hash) VALUES (?, ?)", (email, password_hash))
         conn.commit()
+        novo_id = c.lastrowid
     except sqlite3.IntegrityError:
         return jsonify({"erro": "Email já registado"}), 400
     finally:
         conn.close()
 
-    return jsonify({"mensagem": "Conta criada com sucesso"}), 201
+    # Gera logo o token JWT para entrar direto na app
+    token = jwt.encode({"user_id": novo_id, "exp": datetime.now(timezone.utc) + timedelta(days=30)}, os.getenv("SECRET_KEY"), algorithm="HS256")
+    return jsonify({"mensagem": "Conta criada com sucesso", "token": token}), 201
 
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    dados = request.json
+    dados = request.json or {}
     email = dados.get("email")
     password = dados.get("password")
 
@@ -53,13 +57,13 @@ def login():
     if not check_password_hash(password_hash, password):
         return jsonify({"erro": "Email ou password incorretos"}), 401
 
-    token = jwt.encode({"user_id": user_id}, os.getenv("SECRET_KEY"), algorithm="HS256")
+    token = jwt.encode({"user_id": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=30)}, os.getenv("SECRET_KEY"), algorithm="HS256")
     return jsonify({"token": token}), 200
 
 
 @auth_bp.route("/login-google", methods=["POST"])
 def login_google():
-    dados = request.json
+    dados = request.json or {}
     code = dados.get("code")
     redirect_uri = dados.get("redirect_uri")
 
@@ -79,7 +83,8 @@ def login_google():
     )
 
     if token_resposta.status_code != 200:
-        return jsonify({"erro": "Falha ao trocar código com a Google"}), 401
+        print("ERRO Google token exchange:", token_resposta.status_code, token_resposta.text)
+        return jsonify({"erro": "Falha ao trocar código com a Google", "detalhe": token_resposta.json()}), 401
 
     token_dados = token_resposta.json()
     access_token = token_dados.get("access_token")
@@ -112,5 +117,5 @@ def login_google():
     conn.close()
 
     # 4. Gerar o teu próprio token JWT
-    token = jwt.encode({"user_id": user_id}, os.getenv("SECRET_KEY"), algorithm="HS256")
+    token = jwt.encode({"user_id": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=30)}, os.getenv("SECRET_KEY"), algorithm="HS256")
     return jsonify({"token": token}), 200

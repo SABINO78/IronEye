@@ -9,6 +9,7 @@ from routes.auth_route import auth_bp
 from routes.scan_route import scan_bp
 from routes.profile_route import profile_bp
 from routes.history_route import history_bp
+from routes.subscription_route import subscription_bp
 
 # Carrega as variáveis de ambiente do teu ficheiro .env
 load_dotenv()
@@ -29,6 +30,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(scan_bp)
 app.register_blueprint(profile_bp)
 app.register_blueprint(history_bp)
+app.register_blueprint(subscription_bp)
 
 if __name__ == "__main__":
     # Força o Flask a rodar na porta 5000 exposto para toda a tua rede Wi-Fi local

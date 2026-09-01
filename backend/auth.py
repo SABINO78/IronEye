@@ -10,7 +10,11 @@ def token_required(f):
         if not auth_header:
             return jsonify({"erro": "Token não fornecido"}), 401
 
-        token = auth_header.split(" ")[1]
+        partes = auth_header.split(" ")
+        if len(partes) != 2 or partes[0] != "Bearer":
+            return jsonify({"erro": "Formato de token inválido"}), 401
+
+        token = partes[1]
 
         try:
             dados = jwt.decode(token, os.getenv("SECRET_KEY"), algorithms=["HS256"])

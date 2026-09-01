@@ -3,10 +3,11 @@ import {
     Text,
     StyleSheet,
     ScrollView,
+    TouchableOpacity,
 } from "react-native";
 
 
-export default function ScanDetails({ route }) {
+export default function ScanDetails({ route, navigation }) {
 
     const { scan } = route.params;
 
@@ -26,6 +27,14 @@ export default function ScanDetails({ route }) {
     return (
 
         <ScrollView style={styles.container}>
+
+            {/* Botão de voltar */}
+            <TouchableOpacity
+                style={styles.botaoVoltar}
+                onPress={() => navigation.goBack()}
+            >
+                <Text style={styles.voltarTexto}>← Voltar</Text>
+            </TouchableOpacity>
 
             <Text style={styles.titulo}>
                 {scan.machine_name || "Máquina"}
@@ -225,10 +234,21 @@ const styles = StyleSheet.create({
 
         fontWeight: "bold",
 
-        marginTop: 40,
+        marginTop: 10,
 
         marginBottom: 25,
 
+    },
+
+    botaoVoltar: {
+        marginTop: 40,
+        paddingVertical: 8,
+    },
+
+    voltarTexto: {
+        color: "#FF8C00",
+        fontSize: 16,
+        fontWeight: "600",
     },
 
     card: {
