@@ -18,13 +18,13 @@ def verify_subscription(user_id):
 
     revenuecat_api_key = os.getenv("REVENUECAT_API_KEY")
 
-    #depois do desenvolvimento alterar isto
+    # depois do desenvolvimento alterar isto
     if not revenuecat_api_key:
         # Se a chave não está configurada, aceitar o pedido
         # do frontend diretamente (modo desenvolvimento)
         conn = get_db()
         c = conn.cursor()
-        c.execute("UPDATE users SET is_pro = 1 WHERE id = ?", (user_id,))
+        c.execute("UPDATE users SET is_pro = 1 WHERE id = %s", (user_id,))
         conn.commit()
         conn.close()
         return jsonify({"is_pro": True, "modo": "dev"}), 200
@@ -54,7 +54,7 @@ def verify_subscription(user_id):
         conn = get_db()
         c = conn.cursor()
         c.execute(
-            "UPDATE users SET is_pro = ? WHERE id = ?",
+            "UPDATE users SET is_pro = %s WHERE id = %s",
             (1 if is_pro else 0, user_id)
         )
         conn.commit()

@@ -62,7 +62,7 @@ def obter_bonus_hoje(user_id, conn):
         """
         SELECT bonus_scans_hoje, bonus_scans_data
         FROM users
-        WHERE id = ?
+        WHERE id = %s
         """,
         (user_id,)
     )
@@ -74,8 +74,8 @@ def obter_bonus_hoje(user_id, conn):
 
     bonus_hoje, bonus_data = resultado
 
-    # Data atual do SQLite
-    c.execute("SELECT date('now')")
+    # Data atual do PostgreSQL
+    c.execute("SELECT CURRENT_DATE")
 
     hoje = c.fetchone()[0]
 
@@ -87,8 +87,8 @@ def obter_bonus_hoje(user_id, conn):
             """
             UPDATE users
             SET bonus_scans_hoje = 0,
-                bonus_scans_data = ?
-            WHERE id = ?
+                bonus_scans_data = %s
+            WHERE id = %s
             """,
             (hoje, user_id)
         )
@@ -287,7 +287,7 @@ def scan(user_id):
         """
         SELECT is_pro
         FROM users
-        WHERE id = ?
+        WHERE id = %s
         """,
         (user_id,)
     )
@@ -318,8 +318,8 @@ def scan(user_id):
         """
         SELECT COUNT(*)
         FROM scans
-        WHERE user_id = ?
-        AND date(scanned_at) = date('now')
+        WHERE user_id = %s
+        AND scanned_at::date = CURRENT_DATE
         """,
         (user_id,)
     )
@@ -508,7 +508,8 @@ def scan(user_id):
             confidence
         )
 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
         """,
 
         (
@@ -538,15 +539,15 @@ def scan(user_id):
         )
     )
 
-    conn.commit()
+    scan_id = c.fetchone()[0]
 
-    scan_id = c.lastrowid
+    conn.commit()
 
     c.execute(
         """
         SELECT scanned_at
         FROM scans
-        WHERE id = ?
+        WHERE id = %s
         """,
         (scan_id,)
     )
@@ -650,7 +651,7 @@ def scan_manual(user_id):
         """
         SELECT is_pro
         FROM users
-        WHERE id = ?
+        WHERE id = %s
         """,
         (user_id,)
     )
@@ -677,8 +678,8 @@ def scan_manual(user_id):
         """
         SELECT COUNT(*)
         FROM scans
-        WHERE user_id = ?
-        AND date(scanned_at) = date('now')
+        WHERE user_id = %s
+        AND scanned_at::date = CURRENT_DATE
         """,
         (user_id,)
     )
@@ -864,7 +865,8 @@ def scan_manual(user_id):
             confidence
         )
 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
         """,
 
         (
@@ -894,15 +896,15 @@ def scan_manual(user_id):
         )
     )
 
-    conn.commit()
+    scan_id = c.fetchone()[0]
 
-    scan_id = c.lastrowid
+    conn.commit()
 
     c.execute(
         """
         SELECT scanned_at
         FROM scans
-        WHERE id = ?
+        WHERE id = %s
         """,
         (scan_id,)
     )
@@ -972,7 +974,7 @@ def scan_bonus(user_id):
         """
         SELECT is_pro
         FROM users
-        WHERE id = ?
+        WHERE id = %s
         """,
         (user_id,)
     )
@@ -1043,9 +1045,9 @@ def scan_bonus(user_id):
     c.execute(
         """
         UPDATE users
-        SET bonus_scans_hoje = ?,
-            bonus_scans_data = date('now')
-        WHERE id = ?
+        SET bonus_scans_hoje = %s,
+            bonus_scans_data = CURRENT_DATE
+        WHERE id = %s
         """,
         (
             novo_bonus,
@@ -1063,8 +1065,8 @@ def scan_bonus(user_id):
         """
         SELECT COUNT(*)
         FROM scans
-        WHERE user_id = ?
-        AND date(scanned_at) = date('now')
+        WHERE user_id = %s
+        AND scanned_at::date = CURRENT_DATE
         """,
         (user_id,)
     )
@@ -1115,7 +1117,7 @@ def dashboard(user_id):
         """
         SELECT is_pro
         FROM users
-        WHERE id = ?
+        WHERE id = %s
         """,
         (user_id,)
     )
@@ -1150,8 +1152,8 @@ def dashboard(user_id):
         """
         SELECT COUNT(*)
         FROM scans
-        WHERE user_id = ?
-        AND date(scanned_at) = date('now')
+        WHERE user_id = %s
+        AND scanned_at::date = CURRENT_DATE
         """,
         (user_id,)
     )
@@ -1166,8 +1168,8 @@ def dashboard(user_id):
         """
         SELECT COUNT(*)
         FROM scans
-        WHERE user_id = ?
-        AND scanned_at >= datetime('now', '-7 days')
+        WHERE user_id = %s
+        AND scanned_at >= NOW() - INTERVAL '7 days'
         """,
         (user_id,)
     )

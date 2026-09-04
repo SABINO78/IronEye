@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 import {
     View,
@@ -13,18 +13,118 @@ import {
 } from "react-native";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+    RewardedAd,
+    RewardedAdEventType,
+    AdEventType,
+    TestIds,
+} from "react-native-google-mobile-ads";
 
 import { API_URL } from "../config";
 
+const AD_UNIT_ID = TestIds.REWARDED;
 const IDIOMA_ATUAL = "pt";
 
 
 export default function ManualScanScreen({ navigation }) {
 
     const [machineName, setMachineName] = useState("");
-
     const [loading, setLoading] = useState(false);
+    const [adLoaded, setAdLoaded] = useState(false);
+    const [adLoading, setAdLoading] = useState(false);
 
+    const rewarded = useMemo(() => {
+        return RewardedAd.createForAdRequest(AD_UNIT_ID);
+    }, []);
+
+    useEffect(() => {
+        const unsubscribeLoaded = rewarded.addAdEventListener(
+            RewardedAdEventType.LOADED,
+            () => {
+                setAdLoaded(true);
+                setAdLoading(false);
+            }
+        );
+
+        const unsubscribeEarned = rewarded.addAdEventListener(
+            RewardedAdEventType.EARNED_REWARD,
+            async () => {
+                await receberBonusScan();
+            }
+        );
+
+        const unsubscribeError = rewarded.addAdEventListener(
+            AdEventType.ERROR,
+            (error) => {
+                console.error("Erro no anúncio:", error);
+                setAdLoaded(false);
+                setAdLoading(false);
+            }
+        );
+
+        const unsubscribeClosed = rewarded.addAdEventListener(
+            AdEventType.CLOSED,
+            () => {
+                setAdLoaded(false);
+                rewarded.load();
+            }
+        );
+
+        rewarded.load();
+
+        return () => {
+            unsubscribeLoaded();
+            unsubscribeEarned();
+            unsubscribeError();
+            unsubscribeClosed();
+        };
+    }, [rewarded]);
+
+    async function receberBonusScan() {
+        try {
+            const token = await AsyncStorage.getItem("token");
+            if (!token) return;
+
+            const resposta = await fetch(`${API_URL}/scan/bonus`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+            });
+
+            const dados = await resposta.json();
+            if (resposta.ok) {
+                Alert.alert(
+                    "🎉 +1 scan!",
+                    `Agora tens ${dados.scans_restantes} scans disponíveis hoje.`
+                );
+            }
+        } catch (e) {
+            console.error("Erro ao receber scan bonus:", e);
+        }
+    }
+
+    async function verAnuncio() {
+        if (adLoading) return;
+
+        if (!adLoaded) {
+            setAdLoading(true);
+            Alert.alert("A preparar anúncio", "Espera um momento e tenta novamente.");
+            rewarded.load();
+            return;
+        }
+
+        try {
+            setAdLoading(true);
+            setAdLoaded(false);
+            await rewarded.show();
+        } catch (error) {
+            console.error("Erro ao mostrar anúncio:", error);
+            setAdLoading(false);
+            rewarded.load();
+        }
+    }
 
     async function enviarManual() {
 
@@ -122,6 +222,18 @@ export default function ManualScanScreen({ navigation }) {
                 dados
             );
 
+
+            if (resposta.status === 403 && dados.erro === "Limite diário atingido") {
+                Alert.alert(
+                    "Scans esgotados",
+                    "Já utilizaste todos os teus scans de hoje.",
+                    [
+                        { text: "Fechar", style: "cancel" },
+                        { text: "📺 Ver anúncio +1 scan", onPress: verAnuncio },
+                    ]
+                );
+                return;
+            }
 
             if (!resposta.ok) {
 

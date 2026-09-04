@@ -1,16 +1,24 @@
-import sqlite3
 import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-# Garante que a base de dados fica sempre guardada na pasta do backend
-PASTA_BACKEND = os.path.dirname(os.path.abspath(__file__))
-CAMINHO_DB = os.path.join(PASTA_BACKEND, "ironeye.db")
+# URL de conexão ao PostgreSQL (Supabase)
+# Exemplo: postgresql://user:password@host:5432/postgres
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_db():
-    return sqlite3.connect(CAMINHO_DB)
+    """Estabelece ligação à base de dados PostgreSQL."""
+    if not DATABASE_URL:
+        raise RuntimeError(
+            "DATABASE_URL não está definida. "
+            "Configura a variável de ambiente DATABASE_URL "
+            "com a ligação do teu Supabase."
+        )
+    return psycopg2.connect(DATABASE_URL)
 
 
 def criar_tabela():
-
+    """Cria as tabelas na base de dados PostgreSQL (Supabase)."""
     conn = get_db()
     c = conn.cursor()
 
@@ -20,19 +28,19 @@ def criar_tabela():
 
     c.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
 
             email TEXT UNIQUE NOT NULL,
 
             password_hash TEXT NOT NULL,
 
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
 
             is_pro INTEGER DEFAULT 0,
 
             bonus_scans_hoje INTEGER DEFAULT 0,
 
-            bonus_scans_data TEXT
+            bonus_scans_data DATE
         )
     """)
 
@@ -44,7 +52,7 @@ def criar_tabela():
     c.execute("""
         CREATE TABLE IF NOT EXISTS scans (
 
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
 
             user_id INTEGER NOT NULL,
 
@@ -64,7 +72,7 @@ def criar_tabela():
 
             confidence INTEGER,
 
-            scanned_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            scanned_at TIMESTAMPTZ DEFAULT NOW(),
 
             FOREIGN KEY (user_id)
             REFERENCES users(id)

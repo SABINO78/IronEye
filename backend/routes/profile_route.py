@@ -10,7 +10,7 @@ profile_bp = Blueprint("profile", __name__)
 def profile(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT email, created_at FROM users WHERE id = ?", (user_id,))
+    c.execute("SELECT email, created_at FROM users WHERE id = %s", (user_id,))
     utilizador = c.fetchone()
     conn.close()
 
@@ -19,6 +19,3 @@ def profile(user_id):
 
     email, created_at = utilizador
     return jsonify({"email": email, "created_at": created_at})
-
-
-

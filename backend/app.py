@@ -33,5 +33,8 @@ app.register_blueprint(history_bp)
 app.register_blueprint(subscription_bp)
 
 if __name__ == "__main__":
-    # Força o Flask a rodar na porta 5000 exposto para toda a tua rede Wi-Fi local
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Render define a variável PORT automaticamente.
+    # Em desenvolvimento local, usa a porta 5000.
+    porta = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host="0.0.0.0", port=porta, debug=debug)

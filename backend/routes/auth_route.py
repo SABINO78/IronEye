@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-import sqlite3
+import psycopg2
 import jwt
 import os
 import requests as req_lib
@@ -24,10 +24,14 @@ def register():
     c = conn.cursor()
 
     try:
-        c.execute("INSERT INTO users (email, password_hash) VALUES (?, ?)", (email, password_hash))
+        c.execute(
+            "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
+            (email, password_hash)
+        )
+        novo_id = c.fetchone()[0]
         conn.commit()
-        novo_id = c.lastrowid
-    except sqlite3.IntegrityError:
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
         return jsonify({"erro": "Email já registado"}), 400
     finally:
         conn.close()
@@ -45,7 +49,7 @@ def login():
 
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT id, password_hash FROM users WHERE email = ?", (email,))
+    c.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,))
     utilizador = c.fetchone()
     conn.close()
 
@@ -104,15 +108,18 @@ def login_google():
     # 3. Procurar ou criar o utilizador
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT id FROM users WHERE email = ?", (email,))
+    c.execute("SELECT id FROM users WHERE email = %s", (email,))
     utilizador = c.fetchone()
 
     if utilizador:
         user_id = utilizador[0]
     else:
-        c.execute("INSERT INTO users (email, password_hash) VALUES (?, ?)", (email, ""))
+        c.execute(
+            "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
+            (email, "")
+        )
+        user_id = c.fetchone()[0]
         conn.commit()
-        user_id = c.lastrowid
 
     conn.close()
 

@@ -13,7 +13,7 @@ def history(user_id):
     c = conn.cursor()
 
     # Verifica se o utilizador é Pro
-    c.execute("SELECT is_pro FROM users WHERE id = ?", (user_id,))
+    c.execute("SELECT is_pro FROM users WHERE id = %s", (user_id,))
     is_pro = c.fetchone()[0]
 
     dias = 3 if is_pro else 1
@@ -31,14 +31,24 @@ def history(user_id):
             confidence,
             scanned_at
         FROM scans
-        WHERE user_id = ?
-        AND scanned_at >= datetime('now', ?)
+        WHERE user_id = %s
+        AND scanned_at >= NOW() - make_interval(days => %s)
         ORDER BY scanned_at DESC
-    """, (user_id, f"-{dias} days"))
+    """, (user_id, dias))
 
     scans = c.fetchall()
 
     conn.close()
+
+    def decodificar_json(texto, padrao=None):
+        if padrao is None:
+            padrao = []
+        if not texto:
+            return padrao
+        try:
+            return json.loads(texto)
+        except Exception:
+            return padrao
 
     return jsonify([
         {
@@ -46,10 +56,10 @@ def history(user_id):
             "machine_name": scan[1],
             "muscle_group": scan[2],
             "primary_muscle": scan[3],
-            "secondary_muscles": json.loads(scan[4]),
+            "secondary_muscles": decodificar_json(scan[4], []),
             "description": scan[5],
             "how_to_use": scan[6],
-            "tips": json.loads(scan[7]),
+            "tips": decodificar_json(scan[7], []),
             "confidence": scan[8],
             "scanned_at": scan[9]
         }
