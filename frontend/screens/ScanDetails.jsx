@@ -33,22 +33,22 @@ export default function ScanDetails({ route, navigation }) {
                 style={styles.botaoVoltar}
                 onPress={() => navigation.goBack()}
             >
-                <Text style={styles.voltarTexto}>← Voltar</Text>
+                <Text style={styles.voltarTexto}>← Back</Text>
             </TouchableOpacity>
 
             <Text style={styles.titulo}>
-                {scan.machine_name || "Máquina"}
+                {scan.machine_name || "Machine"}
             </Text>
 
 
             <View style={styles.card}>
 
                 <Text style={styles.label}>
-                    Grupo muscular
+                    Muscle group
                 </Text>
 
                 <Text style={styles.valor}>
-                    {scan.muscle_group || "Não identificado"}
+                    {scan.muscle_group || "Not identified"}
                 </Text>
 
             </View>
@@ -57,11 +57,11 @@ export default function ScanDetails({ route, navigation }) {
             <View style={styles.card}>
 
                 <Text style={styles.label}>
-                    Músculo principal
+                    Primary muscle
                 </Text>
 
                 <Text style={styles.valor}>
-                    {scan.primary_muscle || "Não identificado"}
+                    {scan.primary_muscle || "Not identified"}
                 </Text>
 
             </View>
@@ -70,7 +70,7 @@ export default function ScanDetails({ route, navigation }) {
             <View style={styles.card}>
 
                 <Text style={styles.label}>
-                    Músculos secundários
+                    Secondary muscles
                 </Text>
 
 
@@ -92,7 +92,7 @@ export default function ScanDetails({ route, navigation }) {
                 ) : (
 
                     <Text style={styles.texto}>
-                        Não identificado
+                        Not identified
                     </Text>
 
                 )}
@@ -103,11 +103,11 @@ export default function ScanDetails({ route, navigation }) {
             <View style={styles.card}>
 
                 <Text style={styles.label}>
-                    Descrição
+                    Description
                 </Text>
 
                 <Text style={styles.texto}>
-                    {scan.description || "Sem descrição disponível."}
+                    {scan.description || "No description available."}
                 </Text>
 
             </View>
@@ -116,11 +116,11 @@ export default function ScanDetails({ route, navigation }) {
             <View style={styles.card}>
 
                 <Text style={styles.label}>
-                    Como utilizar
+                    How to use
                 </Text>
 
                 <Text style={styles.texto}>
-                    {scan.how_to_use || "Sem instruções disponíveis."}
+                    {scan.how_to_use || "No instructions available."}
                 </Text>
 
             </View>
@@ -129,7 +129,7 @@ export default function ScanDetails({ route, navigation }) {
             <View style={styles.card}>
 
                 <Text style={styles.label}>
-                    Dicas
+                    Tips
                 </Text>
 
 
@@ -151,7 +151,7 @@ export default function ScanDetails({ route, navigation }) {
                 ) : (
 
                     <Text style={styles.texto}>
-                        Sem dicas disponíveis.
+                        No tips available.
                     </Text>
 
                 )}
@@ -162,7 +162,7 @@ export default function ScanDetails({ route, navigation }) {
             <View style={styles.card}>
 
                 <Text style={styles.label}>
-                    Confiança da IA
+                    AI Confidence
                 </Text>
 
                 <Text style={styles.valor}>
@@ -177,7 +177,7 @@ export default function ScanDetails({ route, navigation }) {
                 <View style={styles.card}>
 
                     <Text style={styles.label}>
-                        Data do Scan
+                        Scan Date
                     </Text>
 
                     <Text style={styles.valor}>
@@ -196,7 +196,7 @@ export default function ScanDetails({ route, navigation }) {
                 <View style={styles.card}>
 
                     <Text style={styles.label}>
-                        Scans restantes
+                        Scans remaining
                     </Text>
 
                     <Text style={styles.valor}>

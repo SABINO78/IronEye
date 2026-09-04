@@ -57,10 +57,10 @@ export default function HistoryScreen({ navigation }) {
         style={styles.botaoVoltar}
         onPress={() => navigation.goBack()}
       >
-        <Text style={styles.voltarTexto}>← Voltar</Text>
+        <Text style={styles.voltarTexto}>← Back</Text>
       </TouchableOpacity>
 
-      <Text style={styles.titulo}>Histórico</Text>
+      <Text style={styles.titulo}>History</Text>
 
       <FlatList
         data={scans}
@@ -105,7 +105,7 @@ export default function HistoryScreen({ navigation }) {
         )}
         ListEmptyComponent={
           <Text style={styles.vazio}>
-            Ainda não fizeste nenhum scan.
+            You haven't made any scans yet.
           </Text>
         }
       />

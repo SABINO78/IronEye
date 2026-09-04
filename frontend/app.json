@@ -3,17 +3,16 @@
     "name": "IronEye",
     "slug": "frontend",
     "scheme": "ironeye",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-
     "ios": {
       "supportsTablet": true
     },
-
     "android": {
       "package": "com.sabino.ironeye",
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -21,11 +20,9 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       }
     },
-
     "web": {
       "favicon": "./assets/favicon.png"
     },
-
     "plugins": [
       "expo-web-browser",
       [
@@ -35,7 +32,6 @@
         }
       ]
     ],
-
     "extra": {
       "eas": {
         "projectId": "fad39a5a-2f21-47f3-a8c3-29e4cdcb494b"

@@ -24,7 +24,7 @@ export default function AuthScreen({ navigation, onLogin }) {
     const endpoint = modo === "login" ? "/login" : "/register";
 
     if (!email.trim() || !password.trim()) {
-      setErro("Preenche o email e a palavra-passe");
+      setErro("Please fill in email and password");
       return;
     }
 
@@ -39,7 +39,7 @@ export default function AuthScreen({ navigation, onLogin }) {
       const dados = await resposta.json();
 
       if (!resposta.ok) {
-        setErro(dados.erro || "Ocorreu um erro ao entrar");
+        setErro(dados.erro || "An error occurred during sign in");
         return;
       }
 
@@ -50,7 +50,7 @@ export default function AuthScreen({ navigation, onLogin }) {
       }
     } catch (erro) {
       console.error("Erro no login/registo:", erro);
-      setErro("Sem ligação ao servidor. Verifica se o backend está ligado.");
+      setErro("No connection to server. Please check if backend is running.");
     } finally {
       setCarregando(false);
     }
@@ -63,9 +63,10 @@ export default function AuthScreen({ navigation, onLogin }) {
       setCarregandoGoogle(true);
       // O Google OAuth exige um endereço HTTPS para Web Client IDs
       const redirectUri = "https://auth.expo.io/@sabnu_78/frontend";
-      const returnUrl = "ironeye://";
+      const returnUrl = AuthSession.makeRedirectUri({ scheme: "ironeye" });
 
       console.log("GOOGLE AUTH REDIRECT URI:", redirectUri);
+      console.log("GOOGLE AUTH RETURN URL:", returnUrl);
 
       const authUrl =
         `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -85,16 +86,16 @@ export default function AuthScreen({ navigation, onLogin }) {
           const code = decodeURIComponent(match[1]);
           await loginComGoogle(code, redirectUri);
         } else {
-          setErro("A Google não devolveu o código de autorização.");
+          setErro("Google did not return an authorization code.");
         }
       } else if (resultado.type === "cancel" || resultado.type === "dismiss") {
-        setErro("Login com a Google cancelado.");
+        setErro("Google sign in cancelled.");
       } else {
-        setErro("Não foi possível concluir a autenticação com a Google.");
+        setErro("Could not complete authentication with Google.");
       }
     } catch (e) {
       console.error("Erro no fluxo Google Auth:", e);
-      setErro("Erro ao iniciar sessão com a Google.");
+      setErro("Error signing in with Google.");
     } finally {
       setCarregandoGoogle(false);
     }
@@ -111,7 +112,7 @@ export default function AuthScreen({ navigation, onLogin }) {
       console.log("STATUS:", resposta.status, "DADOS:", dados);
 
       if (!resposta.ok) {
-        setErro(dados.erro || "A Google rejeitou a validação no servidor.");
+        setErro(dados.erro || "Google authentication rejected by server.");
         return;
       }
 
@@ -119,7 +120,7 @@ export default function AuthScreen({ navigation, onLogin }) {
       onLogin();
     } catch (e) {
       console.error("Erro ao validar token no backend:", e);
-      setErro("Sem ligação ao servidor ao validar com a Google.");
+      setErro("No connection to server when validating with Google.");
     }
   }
 

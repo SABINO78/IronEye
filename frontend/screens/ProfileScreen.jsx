@@ -30,10 +30,10 @@ export default function Profile({ navigation, onLogout }) {
             if (resposta.ok) {
                 setPerfil(dados);
             } else {
-                setErro("Não foi possível carregar os dados do perfil");
+                setErro("Could not load profile data");
             }
         } catch (erro) {
-            setErro("Sem ligação ao servidor");
+            setErro("No connection to server");
         } finally {
             setCarregando(false);
         }
@@ -47,11 +47,11 @@ export default function Profile({ navigation, onLogout }) {
     }
 
     function formatarData(dataIso) {
-        if (!dataIso) return "Recente";
+        if (!dataIso) return "Recent";
         try {
             const d = new Date(dataIso);
             if (isNaN(d.getTime())) return dataIso;
-            return d.toLocaleDateString("pt-PT", {
+            return d.toLocaleDateString("en-US", {
                 day: "numeric",
                 month: "long",
                 year: "numeric"
@@ -66,7 +66,7 @@ export default function Profile({ navigation, onLogout }) {
             {/* Top Bar com Botão Voltar */}
             <TouchableOpacity style={styles.botaoTopoVoltar} onPress={() => navigation.goBack()}>
                 <ArrowLeft color="#FF7A1A" size={22} />
-                <Text style={styles.topoVoltarTexto}>Voltar</Text>
+                <Text style={styles.topoVoltarTexto}>Back</Text>
             </TouchableOpacity>
 
             <View style={styles.content}>
@@ -75,7 +75,7 @@ export default function Profile({ navigation, onLogout }) {
                     <User color="#0A0A0E" size={44} strokeWidth={2.2} />
                 </View>
 
-                <Text style={styles.tituloPerfil}>O teu Perfil</Text>
+                <Text style={styles.tituloPerfil}>Your Profile</Text>
 
                 {carregando ? (
                     <ActivityIndicator size="large" color="#FF7A1A" style={{ marginVertical: 30 }} />
@@ -87,7 +87,7 @@ export default function Profile({ navigation, onLogout }) {
                                 <User color="#FF7A1A" size={20} />
                             </View>
                             <View style={styles.infoTexts}>
-                                <Text style={styles.infoLabel}>EMAIL DA CONTA</Text>
+                                <Text style={styles.infoLabel}>ACCOUNT EMAIL</Text>
                                 <Text style={styles.infoValor} numberOfLines={1}>{perfil.email}</Text>
                             </View>
                         </View>
@@ -98,7 +98,7 @@ export default function Profile({ navigation, onLogout }) {
                                 <Calendar color="#FF7A1A" size={20} />
                             </View>
                             <View style={styles.infoTexts}>
-                                <Text style={styles.infoLabel}>MEMBRO DESDE</Text>
+                                <Text style={styles.infoLabel}>MEMBER SINCE</Text>
                                 <Text style={styles.infoValor}>{formatarData(perfil.created_at)}</Text>
                             </View>
                         </View>
@@ -110,7 +110,7 @@ export default function Profile({ navigation, onLogout }) {
                 {/* Botão de Logout */}
                 <TouchableOpacity style={styles.botaoLogout} onPress={fazerLogout} activeOpacity={0.85}>
                     <LogOut color="#000" size={18} />
-                    <Text style={styles.botaoLogoutTexto}>Terminar Sessão</Text>
+                    <Text style={styles.botaoLogoutTexto}>Log Out</Text>
                 </TouchableOpacity>
             </View>
         </View>

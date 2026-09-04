@@ -1,7 +1,13 @@
 import os
+from dotenv import load_dotenv
+
+# Carrega as variáveis de ambiente do teu ficheiro .env
+# TEM de ser a primeira coisa a correr, antes de importar
+# módulos (como database.py) que leem variáveis de ambiente.
+load_dotenv()
+
 from flask import Flask
 from flask_cors import CORS
-from dotenv import load_dotenv
 from database import criar_tabela
 
 # Importação dos teus Blueprints originais
@@ -10,9 +16,6 @@ from routes.scan_route import scan_bp
 from routes.profile_route import profile_bp
 from routes.history_route import history_bp
 from routes.subscription_route import subscription_bp
-
-# Carrega as variáveis de ambiente do teu ficheiro .env
-load_dotenv()
 
 app = Flask(__name__)
 

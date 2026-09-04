@@ -23,7 +23,7 @@ import {
 import { API_URL } from "../config";
 
 const AD_UNIT_ID = TestIds.REWARDED;
-const IDIOMA_ATUAL = "pt";
+const IDIOMA_ATUAL = "en";
 
 
 export default function ManualScanScreen({ navigation }) {
@@ -97,7 +97,7 @@ export default function ManualScanScreen({ navigation }) {
             if (resposta.ok) {
                 Alert.alert(
                     "🎉 +1 scan!",
-                    `Agora tens ${dados.scans_restantes} scans disponíveis hoje.`
+                    `You now have ${dados.scans_restantes} scans available today.`
                 );
             }
         } catch (e) {
@@ -110,7 +110,7 @@ export default function ManualScanScreen({ navigation }) {
 
         if (!adLoaded) {
             setAdLoading(true);
-            Alert.alert("A preparar anúncio", "Espera um momento e tenta novamente.");
+            Alert.alert("Preparing ad", "Please wait a moment and try again.");
             rewarded.load();
             return;
         }
@@ -133,8 +133,8 @@ export default function ManualScanScreen({ navigation }) {
         if (!nomeLimpo) {
 
             Alert.alert(
-                "Campo vazio",
-                "Escreve o nome da máquina antes de continuar."
+                "Empty field",
+                "Please enter machine name before continuing."
             );
 
             return;
@@ -156,8 +156,8 @@ export default function ManualScanScreen({ navigation }) {
             if (!token) {
 
                 Alert.alert(
-                    "Sessão expirada",
-                    "Faz login novamente."
+                    "Session expired",
+                    "Please log in again."
                 );
 
                 return;
@@ -208,8 +208,8 @@ export default function ManualScanScreen({ navigation }) {
                 );
 
                 Alert.alert(
-                    "Erro",
-                    "O servidor devolveu uma resposta inválida."
+                    "Error",
+                    "Server returned an invalid response."
                 );
 
                 return;
@@ -225,11 +225,11 @@ export default function ManualScanScreen({ navigation }) {
 
             if (resposta.status === 403 && dados.erro === "Limite diário atingido") {
                 Alert.alert(
-                    "Scans esgotados",
-                    "Já utilizaste todos os teus scans de hoje.",
+                    "Scans exhausted",
+                    "You have used all your scans for today.",
                     [
-                        { text: "Fechar", style: "cancel" },
-                        { text: "📺 Ver anúncio +1 scan", onPress: verAnuncio },
+                        { text: "Close", style: "cancel" },
+                        { text: "📺 Watch ad +1 scan", onPress: verAnuncio },
                     ]
                 );
                 return;
@@ -239,10 +239,10 @@ export default function ManualScanScreen({ navigation }) {
 
                 Alert.alert(
 
-                    "Erro",
+                    "Error",
 
                     dados.erro ||
-                    "Não foi possível validar essa máquina."
+                    "Could not validate this machine."
 
                 );
 
@@ -254,10 +254,10 @@ export default function ManualScanScreen({ navigation }) {
 
                 Alert.alert(
 
-                    "Não reconhecido",
+                    "Not recognized",
 
                     dados.erro ||
-                    "Não conseguimos reconhecer essa máquina. Tenta escrever o nome de outra forma."
+                    "Could not recognize this machine. Try writing the name differently."
 
                 );
 
@@ -269,9 +269,9 @@ export default function ManualScanScreen({ navigation }) {
 
                 Alert.alert(
 
-                    "Erro",
+                    "Error",
 
-                    "A IA devolveu uma resposta inesperada."
+                    "AI returned an unexpected response."
 
                 );
 
@@ -300,9 +300,9 @@ export default function ManualScanScreen({ navigation }) {
 
             Alert.alert(
 
-                "Erro de ligação",
+                "Connection error",
 
-                "Não foi possível comunicar com o servidor."
+                "Could not communicate with the server."
 
             );
 
@@ -324,19 +324,19 @@ export default function ManualScanScreen({ navigation }) {
         >
 
             <Text style={styles.titulo}>
-                Escrever nome da máquina
+                Enter machine name
             </Text>
 
             <Text style={styles.subtitulo}>
-                Não conseguimos identificar a máquina pela foto?
-                Escreve o nome dela abaixo.
+                Couldn't identify the machine by photo?
+                Type its name below.
             </Text>
 
             <TextInput
 
                 style={styles.input}
 
-                placeholder="Ex: Leg Press, Lat Pulldown..."
+                placeholder="e.g. Leg Press, Lat Pulldown..."
 
                 placeholderTextColor="#777"
 
@@ -370,7 +370,7 @@ export default function ManualScanScreen({ navigation }) {
                 ) : (
 
                     <Text style={styles.buttonText}>
-                        Confirmar
+                        Confirm
                     </Text>
 
                 )}
@@ -386,7 +386,7 @@ export default function ManualScanScreen({ navigation }) {
             >
 
                 <Text style={styles.cancelar}>
-                    Voltar à câmara
+                    Back to camera
                 </Text>
 
             </TouchableOpacity>

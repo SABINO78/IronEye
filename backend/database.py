@@ -4,17 +4,19 @@ from psycopg2.extras import RealDictCursor
 
 # URL de conexão ao PostgreSQL (Supabase)
 # Exemplo: postgresql://user:password@host:5432/postgres
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# Nota: lê-se dentro de get_db() (e não à data da importação do módulo)
+# para garantir que já foi feito o load_dotenv() antes de ser usada.
 
 def get_db():
     """Estabelece ligação à base de dados PostgreSQL."""
-    if not DATABASE_URL:
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
         raise RuntimeError(
             "DATABASE_URL não está definida. "
             "Configura a variável de ambiente DATABASE_URL "
             "com a ligação do teu Supabase."
         )
-    return psycopg2.connect(DATABASE_URL)
+    return psycopg2.connect(database_url)
 
 
 def criar_tabela():

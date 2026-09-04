@@ -53,7 +53,7 @@ const AD_UNIT_ID = TestIds.REWARDED;
    IDIOMA
 ===================================================== */
 
-const IDIOMA_ATUAL = "pt";
+const IDIOMA_ATUAL = "en";
 
 
 /* =====================================================
@@ -171,8 +171,8 @@ export default function ScanScreen({ navigation }) {
 
 
                     Alert.alert(
-                        "Erro",
-                        "Não foi possível carregar o anúncio. Tenta novamente."
+                        "Error",
+                        "Could not load the ad. Please try again."
                     );
 
                 }
@@ -238,8 +238,8 @@ export default function ScanScreen({ navigation }) {
             if (!token) {
 
                 Alert.alert(
-                    "Sessão expirada",
-                    "Faz login novamente."
+                    "Session expired",
+                    "Please log in again."
                 );
 
                 return;
@@ -288,8 +288,8 @@ export default function ScanScreen({ navigation }) {
                 );
 
                 Alert.alert(
-                    "Erro",
-                    "O servidor devolveu uma resposta inválida."
+                    "Error",
+                    "Server returned an invalid response."
                 );
 
                 return;
@@ -308,10 +308,10 @@ export default function ScanScreen({ navigation }) {
 
                 Alert.alert(
 
-                    "Não foi possível receber o scan",
+                    "Could not claim scan",
 
                     dados.erro ||
-                    "O scan bónus não pôde ser atribuído."
+                    "Bonus scan could not be assigned."
 
                 );
 
@@ -330,7 +330,7 @@ export default function ScanScreen({ navigation }) {
 
                 "🎉 +1 scan!",
 
-                `Agora tens ${dados.scans_restantes} scans disponíveis hoje.`
+                `You now have ${dados.scans_restantes} scans available today.`
 
             );
 
@@ -344,8 +344,8 @@ export default function ScanScreen({ navigation }) {
 
 
             Alert.alert(
-                "Erro de ligação",
-                "Não foi possível comunicar com o servidor."
+                "Connection error",
+                "Could not communicate with the server."
             );
 
         }
@@ -377,8 +377,8 @@ export default function ScanScreen({ navigation }) {
 
 
             Alert.alert(
-                "A preparar anúncio",
-                "Espera um momento e tenta novamente."
+                "Preparing ad",
+                "Please wait a moment and try again."
             );
 
 
@@ -417,8 +417,8 @@ export default function ScanScreen({ navigation }) {
 
 
             Alert.alert(
-                "Erro",
-                "Não foi possível mostrar o anúncio."
+                "Error",
+                "Could not display the ad."
             );
 
 
@@ -438,20 +438,20 @@ export default function ScanScreen({ navigation }) {
 
         Alert.alert(
 
-            "Máquina não encontrada",
+            "Machine not found",
 
             mensagem ||
-            "Não encontrámos uma máquina de ginásio na imagem.",
+            "No gym machine found in the image.",
 
             [
 
                 {
-                    text: "Tentar de novo",
+                    text: "Try again",
                     style: "cancel",
                 },
 
                 {
-                    text: "Escrever nome",
+                    text: "Type name",
 
                     onPress: () =>
                         navigation.navigate(
@@ -502,8 +502,8 @@ export default function ScanScreen({ navigation }) {
             if (!foto || !foto.base64) {
 
                 Alert.alert(
-                    "Erro",
-                    "Não foi possível obter a fotografia."
+                    "Error",
+                    "Could not capture photo."
                 );
 
                 return;
@@ -522,8 +522,8 @@ export default function ScanScreen({ navigation }) {
             if (!token) {
 
                 Alert.alert(
-                    "Sessão expirada",
-                    "Faz login novamente."
+                    "Session expired",
+                    "Please log in again."
                 );
 
                 return;
@@ -592,8 +592,8 @@ export default function ScanScreen({ navigation }) {
                 );
 
                 Alert.alert(
-                    "Erro",
-                    "O servidor devolveu uma resposta inválida."
+                    "Error",
+                    "Server returned an invalid response."
                 );
 
                 return;
@@ -628,19 +628,19 @@ export default function ScanScreen({ navigation }) {
 
                 Alert.alert(
 
-                    "Scans esgotados",
+                    "Scans exhausted",
 
-                    "Já utilizaste todos os teus scans de hoje.",
+                    "You have used all your scans for today.",
 
                     [
 
                         {
-                            text: "Fechar",
+                            text: "Close",
                             style: "cancel",
                         },
 
                         {
-                            text: "📺 Ver anúncio +1 scan",
+                            text: "📺 Watch ad +1 scan",
 
                             onPress:
                                 verAnuncio,
@@ -665,10 +665,10 @@ export default function ScanScreen({ navigation }) {
 
                 Alert.alert(
 
-                    "Erro",
+                    "Error",
 
                     dados.erro ||
-                    "Não foi possível analisar a imagem."
+                    "Could not analyze the image."
 
                 );
 
@@ -704,9 +704,9 @@ export default function ScanScreen({ navigation }) {
 
                 Alert.alert(
 
-                    "Erro",
+                    "Error",
 
-                    "A IA devolveu uma resposta inesperada."
+                    "AI returned an unexpected response."
 
                 );
 
@@ -740,9 +740,9 @@ export default function ScanScreen({ navigation }) {
 
             Alert.alert(
 
-                "Erro de ligação",
+                "Connection error",
 
-                "Não foi possível comunicar com o servidor."
+                "Could not communicate with the server."
 
             );
 
@@ -798,8 +798,7 @@ export default function ScanScreen({ navigation }) {
                     }
                 >
 
-                    A IronEye precisa de acesso
-                    à câmara.
+                    IronEye requires camera access.
 
                 </Text>
 
@@ -822,7 +821,7 @@ export default function ScanScreen({ navigation }) {
                         }
                     >
 
-                        Permitir câmara
+                        Allow camera
 
                     </Text>
 
@@ -877,8 +876,7 @@ export default function ScanScreen({ navigation }) {
                             }
                         >
 
-                            A IA está a analisar
-                            a máquina...
+                            AI is analyzing the machine...
 
                         </Text>
 
@@ -925,7 +923,7 @@ export default function ScanScreen({ navigation }) {
                         }
                     >
 
-                        Escrever nome manualmente
+                        Type name manually
 
                     </Text>
 
@@ -944,7 +942,7 @@ export default function ScanScreen({ navigation }) {
                         }
                     >
 
-                        A preparar anúncio...
+                        Preparing ad...
 
                     </Text>
 

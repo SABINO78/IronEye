@@ -74,7 +74,7 @@ export default function Home({ navigation, onLogout }) {
                 }
 
                 setErro(
-                    dados.erro || "Não foi possível carregar os dados"
+                    dados.erro || "Could not load data"
                 );
 
             }
@@ -87,7 +87,7 @@ export default function Home({ navigation, onLogout }) {
             );
 
             setErro(
-                "Não foi possível carregar os dados"
+                "Could not load data"
             );
 
         }

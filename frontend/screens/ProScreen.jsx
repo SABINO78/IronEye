@@ -84,7 +84,7 @@ export default function ProScreen({ navigation }) {
         case PAYWALL_RESULT.RESTORED:
           setIsPremium(true);
           await sincronizarComBackend();
-          Alert.alert("IronEye Pro 🎉", "Subscrição ativada com sucesso! Aproveita o teu treino.");
+          Alert.alert("IronEye Pro 🎉", "Subscription activated successfully! Enjoy your workout.");
           break;
         case PAYWALL_RESULT.CANCELLED:
         case PAYWALL_RESULT.NOT_PRESENTED:
@@ -94,7 +94,7 @@ export default function ProScreen({ navigation }) {
       }
     } catch (erro) {
       console.error("Erro ao abrir paywall:", erro);
-      Alert.alert("Aviso", "Não foi possível abrir a janela de pagamento. Verifica a tua ligação.");
+      Alert.alert("Warning", "Could not open payment window. Please check your connection.");
     } finally {
       setCarregando(false);
     }
@@ -108,12 +108,12 @@ export default function ProScreen({ navigation }) {
       if (typeof customerInfo.entitlements.active["IronEye Pro"] !== "undefined") {
         setIsPremium(true);
         await sincronizarComBackend();
-        Alert.alert("Sucesso", "A tua subscrição foi restaurada com sucesso!");
+        Alert.alert("Success", "Your subscription was restored successfully!");
       } else {
-        Alert.alert("Informação", "Não foram encontradas compras ativas para esta conta.");
+        Alert.alert("Info", "No active purchases found for this account.");
       }
     } catch (e) {
-      Alert.alert("Erro", "Não foi possível verificar compras anteriores.");
+      Alert.alert("Error", "Could not verify previous purchases.");
     } finally {
       setCarregando(false);
     }
@@ -139,10 +139,10 @@ export default function ProScreen({ navigation }) {
 
       {/* Título & Subtítulo */}
       <Text style={styles.titulo}>
-        Eleva o teu treino com o <Text style={styles.destaque}>IronEye Pro</Text>
+        Elevate your workout with <Text style={styles.destaque}>IronEye Pro</Text>
       </Text>
       <Text style={styles.subtitulo}>
-        Acede ao poder máximo da IA no ginásio. Mais scans, execução perfeita e zero anúncios.
+        Unlock maximum AI power at the gym. More scans, perfect form, and zero ads.
       </Text>
 
       {/* Lista de Vantagens */}
@@ -152,8 +152,8 @@ export default function ProScreen({ navigation }) {
             <Zap color="#FF7A1A" size={20} />
           </View>
           <View style={styles.beneficioTextoContainer}>
-            <Text style={styles.beneficioTitulo}>20 Scans com IA por Dia</Text>
-            <Text style={styles.beneficioDesc}>5x mais capacidade para sessões de treino completas.</Text>
+            <Text style={styles.beneficioTitulo}>20 AI Scans Per Day</Text>
+            <Text style={styles.beneficioDesc}>5x more capacity for complete workout sessions.</Text>
           </View>
         </View>
 
@@ -162,8 +162,8 @@ export default function ProScreen({ navigation }) {
             <CheckCircle2 color="#FF7A1A" size={20} />
           </View>
           <View style={styles.beneficioTextoContainer}>
-            <Text style={styles.beneficioTitulo}>Análise Muscular & Biomecânica</Text>
-            <Text style={styles.beneficioDesc}>Músculos primários, secundários e dicas posturais detalhadas.</Text>
+            <Text style={styles.beneficioTitulo}>Muscle & Biomechanics Analysis</Text>
+            <Text style={styles.beneficioDesc}>Primary, secondary muscles, and detailed form tips.</Text>
           </View>
         </View>
 
@@ -172,8 +172,8 @@ export default function ProScreen({ navigation }) {
             <History color="#FF7A1A" size={20} />
           </View>
           <View style={styles.beneficioTextoContainer}>
-            <Text style={styles.beneficioTitulo}>Histórico Completo de Exercícios</Text>
-            <Text style={styles.beneficioDesc}>Consulta e revê todas as máquinas analisadas recentemente.</Text>
+            <Text style={styles.beneficioTitulo}>Complete Exercise History</Text>
+            <Text style={styles.beneficioDesc}>View and review all recently analyzed machines.</Text>
           </View>
         </View>
 
@@ -182,8 +182,8 @@ export default function ProScreen({ navigation }) {
             <ShieldCheck color="#FF7A1A" size={20} />
           </View>
           <View style={styles.beneficioTextoContainer}>
-            <Text style={styles.beneficioTitulo}>100% Sem Anúncios</Text>
-            <Text style={styles.beneficioDesc}>Foco total nos teus pesos sem interrupções ou esperas.</Text>
+            <Text style={styles.beneficioTitulo}>100% Ad-Free</Text>
+            <Text style={styles.beneficioDesc}>Total focus on your weights without interruptions or waiting.</Text>
           </View>
         </View>
       </View>
@@ -191,16 +191,16 @@ export default function ProScreen({ navigation }) {
       {/* Card do Preço */}
       <View style={styles.precoCard}>
         <View style={styles.tagMelhorValor}>
-          <Text style={styles.tagTexto}>PLANO MENSAL</Text>
+          <Text style={styles.tagTexto}>MONTHLY PLAN</Text>
         </View>
 
         <View style={styles.precoLinha}>
           <Text style={styles.precoValor}>{precoFormatado}</Text>
-          <Text style={styles.precoPeriodo}> / mês</Text>
+          <Text style={styles.precoPeriodo}> / month</Text>
         </View>
 
         <Text style={styles.precoDesc}>
-          Cancela quando quiseres na Google Play. Sem compromisso.
+          Cancel anytime on Google Play. No commitment.
         </Text>
       </View>
 
@@ -208,7 +208,7 @@ export default function ProScreen({ navigation }) {
       {isPremium ? (
         <View style={styles.cardJaPro}>
           <CheckCircle2 color="#00E676" size={22} />
-          <Text style={styles.textoJaPro}>Já és membro IronEye Pro ✅</Text>
+          <Text style={styles.textoJaPro}>You are an IronEye Pro member ✅</Text>
         </View>
       ) : (
         <TouchableOpacity
@@ -220,7 +220,7 @@ export default function ProScreen({ navigation }) {
           {carregando ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <Text style={styles.botaoPrincipalTexto}>Tornar-me Pro 🔥</Text>
+            <Text style={styles.botaoPrincipalTexto}>Go Pro 🔥</Text>
           )}
         </TouchableOpacity>
       )}
@@ -228,19 +228,19 @@ export default function ProScreen({ navigation }) {
       {/* Ações Secundárias */}
       <View style={styles.botoesSecundarios}>
         <TouchableOpacity onPress={restaurarCompras} disabled={carregando}>
-          <Text style={styles.textoRestaurar}>Restaurar compras</Text>
+          <Text style={styles.textoRestaurar}>Restore purchases</Text>
         </TouchableOpacity>
 
         <Text style={styles.separador}>•</Text>
 
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.textoDepois}>Agora não</Text>
+          <Text style={styles.textoDepois}>Not now</Text>
         </TouchableOpacity>
       </View>
 
       {/* Rodapé Legal */}
       <Text style={styles.rodapeLegal}>
-        O pagamento é processado em segurança pela Google Play. Podes gerir ou cancelar a tua subscrição a qualquer momento nas definições da Play Store.
+        Payment is processed securely by Google Play. You can manage or cancel your subscription anytime in Play Store settings.
       </Text>
     </ScrollView>
   );
@@ -473,4 +473,4 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     paddingHorizontal: 12,
   },
-});
+});
