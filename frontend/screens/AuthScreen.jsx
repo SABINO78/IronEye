@@ -1,16 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { Eye, Mail, Lock } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session";
-import * as Google from "expo-auth-session/providers/google";
+import { supabase } from "../lib/supabase"; // Garante que o caminho para o teu ficheiro supabase.js está correto
 import { API_URL } from "../config";
 
 WebBrowser.maybeCompleteAuthSession();
-
-const ANDROID_CLIENT_ID = "609585601175-3tsa339u8l178c2ne1n50f9i5ul8me5g.apps.googleusercontent.com";
-const WEB_CLIENT_ID = "609585601175-nue1jb7oui1thg0iqdtq74k7anej2p80.apps.googleusercontent.com";
 
 export default function AuthScreen({ navigation, onLogin }) {
   const [modo, setModo] = useState("login");
@@ -20,36 +16,21 @@ export default function AuthScreen({ navigation, onLogin }) {
   const [carregando, setCarregando] = useState(false);
   const [carregandoGoogle, setCarregandoGoogle] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: ANDROID_CLIENT_ID,
-    webClientId: WEB_CLIENT_ID,
-    responseType: AuthSession.ResponseType.Code,
-    scopes: ["openid", "profile", "email"],
-  });
+  // Escuta as alterações de sessão do Supabase
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        console.log("[SUPABASE LOG] Utilizador autenticado com sucesso!");
+        await AsyncStorage.setItem("token", session.access_token);
+        setCarregandoGoogle(false);
+        onLogin();
+      }
+    });
 
-  React.useEffect(() => {
-    if (request?.redirectUri) {
-      console.log("[GOOGLE AUTH LOG] Google Provider redirectUri:", request.redirectUri);
-    }
-  }, [request]);
+    return () => subscription.unsubscribe();
+  }, []);
 
-  React.useEffect(() => {
-    if (response?.type === "success") {
-      const { code } = response.params;
-      const codeVerifier = request?.codeVerifier;
-      const usedRedirectUri = request?.redirectUri;
-      console.log("[GOOGLE AUTH LOG] Auth success. code:", !!code, "usedRedirectUri:", usedRedirectUri, "codeVerifier:", !!codeVerifier);
-      loginComGoogle(code, usedRedirectUri, codeVerifier);
-    } else if (response?.type === "error") {
-      console.error("[GOOGLE AUTH LOG] OAuth error response:", response.error);
-      setCarregandoGoogle(false);
-      setErro("Error signing in with Google: " + (response.error?.message || "Unknown error"));
-    } else if (response?.type === "dismiss" || response?.type === "cancel") {
-      console.log("[GOOGLE AUTH LOG] User cancelled or dismissed Google Sign-In.");
-      setCarregandoGoogle(false);
-    }
-  }, [response]);
-
+  // Login/Registo tradicional com o teu backend Flask
   async function submeter() {
     if (carregando) return;
     setErro(null);
@@ -75,7 +56,6 @@ export default function AuthScreen({ navigation, onLogin }) {
         return;
       }
 
-      // Se o backend devolveu o token (seja login ou registo), entra logo na app
       if (dados.token) {
         await AsyncStorage.setItem("token", dados.token);
         onLogin();
@@ -88,46 +68,27 @@ export default function AuthScreen({ navigation, onLogin }) {
     }
   }
 
-  async function loginComGoogleManual() {
+  // Novo Login Simplificado com Google via Supabase
+  async function loginComGoogle() {
     if (carregandoGoogle) return;
     setErro(null);
     setCarregandoGoogle(true);
-    try {
-      console.log("[GOOGLE AUTH LOG] Triggering promptAsync() for Google auth...");
-      await promptAsync();
-    } catch (e) {
-      console.error("[GOOGLE AUTH LOG] Exception in promptAsync():", e);
-      setErro("Error signing in with Google.");
-      setCarregandoGoogle(false);
-    }
-  }
 
-  async function loginComGoogle(code, usedRedirectUri, codeVerifier) {
     try {
-      console.log("[GOOGLE AUTH LOG] Sending request to Flask backend:", `${API_URL}/login-google`);
-      const resposta = await fetch(`${API_URL}/login-google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: code,
-          redirect_uri: usedRedirectUri,
-          code_verifier: codeVerifier
-        }),
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: "ironeye://",
+        },
       });
-      const dados = await resposta.json();
-      console.log("[GOOGLE AUTH LOG] Backend response status:", resposta.status, "data:", dados);
 
-      if (!resposta.ok) {
-        setErro(dados.erro || "Google authentication rejected by server.");
-        return;
+      if (error) {
+        setErro(error.message);
+        setCarregandoGoogle(false);
       }
-
-      await AsyncStorage.setItem("token", dados.token);
-      onLogin();
     } catch (e) {
-      console.error("[GOOGLE AUTH LOG] Exception during backend login validation:", e);
-      setErro("No connection to server when validating with Google.");
-    } finally {
+      console.error("[SUPABASE GOOGLE ERROR]", e);
+      setErro("Error signing in with Google.");
       setCarregandoGoogle(false);
     }
   }
@@ -204,7 +165,7 @@ export default function AuthScreen({ navigation, onLogin }) {
 
       <TouchableOpacity
         style={styles.botaoGoogle}
-        onPress={loginComGoogleManual}
+        onPress={loginComGoogle}
         disabled={carregando || carregandoGoogle}
         activeOpacity={0.85}
       >
