@@ -70,25 +70,36 @@ def login_google():
     dados = request.json or {}
     code = dados.get("code")
     redirect_uri = dados.get("redirect_uri")
+    code_verifier = dados.get("code_verifier")
+
+    print(f"[GOOGLE AUTH LOG] Executing /login-google. redirect_uri={redirect_uri}, code_verifier_present={bool(code_verifier)}")
 
     if not code or not redirect_uri:
+        print("[GOOGLE AUTH LOG] Missing code or redirect_uri in request.")
         return jsonify({"erro": "Código ou redirect_uri em falta"}), 400
 
     # 1. Trocar o "code" por um access_token junto da Google
+    payload = {
+        "code": code,
+        "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+        "redirect_uri": redirect_uri,
+        "grant_type": "authorization_code",
+    }
+    if code_verifier:
+        payload["code_verifier"] = code_verifier
+
     token_resposta = req_lib.post(
         "https://oauth2.googleapis.com/token",
-        data={
-            "code": code,
-            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
-            "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
-            "redirect_uri": redirect_uri,
-            "grant_type": "authorization_code",
-        }
+        data=payload
     )
 
     if token_resposta.status_code != 200:
-        print("ERRO Google token exchange:", token_resposta.status_code, token_resposta.text)
-        return jsonify({"erro": "Falha ao trocar código com a Google", "detalhe": token_resposta.json()}), 401
+        print(f"[GOOGLE AUTH LOG] Error in Google token exchange ({token_resposta.status_code}): {token_resposta.text}")
+        return jsonify({
+            "erro": "Falha ao trocar código com a Google",
+            "detalhe": token_resposta.json()
+        }), 401
 
     token_dados = token_resposta.json()
     access_token = token_dados.get("access_token")
@@ -100,10 +111,12 @@ def login_google():
     )
 
     if resposta_google.status_code != 200:
+        print(f"[GOOGLE AUTH LOG] Error getting Google userinfo ({resposta_google.status_code}): {resposta_google.text}")
         return jsonify({"erro": "Token da Google inválido"}), 401
 
     info_google = resposta_google.json()
     email = info_google.get("email")
+    print(f"[GOOGLE AUTH LOG] Successfully retrieved Google account email: {email}")
 
     # 3. Procurar ou criar o utilizador
     conn = get_db()
@@ -113,6 +126,7 @@ def login_google():
 
     if utilizador:
         user_id = utilizador[0]
+        print(f"[GOOGLE AUTH LOG] Existing user found in DB. ID: {user_id}")
     else:
         c.execute(
             "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
@@ -120,9 +134,19 @@ def login_google():
         )
         user_id = c.fetchone()[0]
         conn.commit()
+        print(f"[GOOGLE AUTH LOG] Created new user in DB. ID: {user_id}")
 
     conn.close()
 
     # 4. Gerar o teu próprio token JWT
-    token = jwt.encode({"user_id": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=30)}, os.getenv("SECRET_KEY"), algorithm="HS256")
+    token = jwt.encode(
+        {
+            "user_id": user_id,
+            "exp": datetime.now(timezone.utc) + timedelta(days=30)
+        },
+        os.getenv("SECRET_KEY"),
+        algorithm="HS256"
+    )
+
+    print("[GOOGLE AUTH LOG] JWT token generated successfully. Responding to client.")
     return jsonify({"token": token}), 200

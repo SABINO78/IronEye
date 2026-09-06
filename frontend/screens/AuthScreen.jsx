@@ -18,6 +18,43 @@ export default function AuthScreen({ navigation, onLogin }) {
   const [carregando, setCarregando] = useState(false);
   const [carregandoGoogle, setCarregandoGoogle] = useState(false);
 
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: "ironeye"
+  });
+
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: GOOGLE_CLIENT_ID,
+      scopes: ["openid", "profile", "email"],
+      redirectUri: redirectUri,
+      responseType: AuthSession.ResponseType.Code,
+    },
+    {
+      authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+    }
+  );
+
+  React.useEffect(() => {
+    console.log("[GOOGLE AUTH LOG] AuthSession redirectUri configured as:", redirectUri);
+  }, [redirectUri]);
+
+  React.useEffect(() => {
+    if (response?.type === "success") {
+      const { code } = response.params;
+      const codeVerifier = request?.codeVerifier;
+      const usedRedirectUri = request?.redirectUri || redirectUri;
+      console.log("[GOOGLE AUTH LOG] Auth success. code:", !!code, "usedRedirectUri:", usedRedirectUri, "codeVerifier:", !!codeVerifier);
+      loginComGoogle(code, usedRedirectUri, codeVerifier);
+    } else if (response?.type === "error") {
+      console.error("[GOOGLE AUTH LOG] OAuth error response:", response.error);
+      setCarregandoGoogle(false);
+      setErro("Error signing in with Google: " + (response.error?.message || "Unknown error"));
+    } else if (response?.type === "dismiss" || response?.type === "cancel") {
+      console.log("[GOOGLE AUTH LOG] User cancelled or dismissed Google Sign-In.");
+      setCarregandoGoogle(false);
+    }
+  }, [response]);
+
   async function submeter() {
     if (carregando) return;
     setErro(null);
@@ -59,57 +96,31 @@ export default function AuthScreen({ navigation, onLogin }) {
   async function loginComGoogleManual() {
     if (carregandoGoogle) return;
     setErro(null);
+    setCarregandoGoogle(true);
     try {
-      setCarregandoGoogle(true);
-      // O Google OAuth exige um endereço HTTPS para Web Client IDs
-      const redirectUri = "https://auth.expo.io/@sabnu_78/frontend";
-      const returnUrl = AuthSession.makeRedirectUri({ scheme: "ironeye" });
-
-      console.log("GOOGLE AUTH REDIRECT URI:", redirectUri);
-      console.log("GOOGLE AUTH RETURN URL:", returnUrl);
-
-      const authUrl =
-        `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${GOOGLE_CLIENT_ID}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&response_type=code` +
-        `&state=${encodeURIComponent(returnUrl)}` +
-        `&scope=${encodeURIComponent("openid email profile")}`;
-
-      const resultado = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
-      console.log("GOOGLE AUTH RESULT:", resultado);
-
-      if (resultado.type === "success") {
-        const url = resultado.url;
-        const match = url.match(/[?&]code=([^&]*)/);
-        if (match) {
-          const code = decodeURIComponent(match[1]);
-          await loginComGoogle(code, redirectUri);
-        } else {
-          setErro("Google did not return an authorization code.");
-        }
-      } else if (resultado.type === "cancel" || resultado.type === "dismiss") {
-        setErro("Google sign in cancelled.");
-      } else {
-        setErro("Could not complete authentication with Google.");
-      }
+      console.log("[GOOGLE AUTH LOG] Triggering promptAsync() for Google auth...");
+      await promptAsync();
     } catch (e) {
-      console.error("Erro no fluxo Google Auth:", e);
+      console.error("[GOOGLE AUTH LOG] Exception in promptAsync():", e);
       setErro("Error signing in with Google.");
-    } finally {
       setCarregandoGoogle(false);
     }
   }
 
-  async function loginComGoogle(code, redirectUri) {
+  async function loginComGoogle(code, usedRedirectUri, codeVerifier) {
     try {
+      console.log("[GOOGLE AUTH LOG] Sending request to Flask backend:", `${API_URL}/login-google`);
       const resposta = await fetch(`${API_URL}/login-google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: code, redirect_uri: redirectUri }),
+        body: JSON.stringify({
+          code: code,
+          redirect_uri: usedRedirectUri,
+          code_verifier: codeVerifier
+        }),
       });
       const dados = await resposta.json();
-      console.log("STATUS:", resposta.status, "DADOS:", dados);
+      console.log("[GOOGLE AUTH LOG] Backend response status:", resposta.status, "data:", dados);
 
       if (!resposta.ok) {
         setErro(dados.erro || "Google authentication rejected by server.");
@@ -119,8 +130,10 @@ export default function AuthScreen({ navigation, onLogin }) {
       await AsyncStorage.setItem("token", dados.token);
       onLogin();
     } catch (e) {
-      console.error("Erro ao validar token no backend:", e);
+      console.error("[GOOGLE AUTH LOG] Exception during backend login validation:", e);
       setErro("No connection to server when validating with Google.");
+    } finally {
+      setCarregandoGoogle(false);
     }
   }
 
