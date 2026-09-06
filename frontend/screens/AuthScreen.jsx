@@ -4,11 +4,13 @@ import { Eye, Mail, Lock } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
+import * as Google from "expo-auth-session/providers/google";
 import { API_URL } from "../config";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_CLIENT_ID = "609585601175-nue1jb7oui1thg0iqdtq74k7anej2p80.apps.googleusercontent.com";
+const ANDROID_CLIENT_ID = "609585601175-3tsa339u8l178c2ne1n50f9i5ul8me5g.apps.googleusercontent.com";
+const WEB_CLIENT_ID = "609585601175-nue1jb7oui1thg0iqdtq74k7anej2p80.apps.googleusercontent.com";
 
 export default function AuthScreen({ navigation, onLogin }) {
   const [modo, setModo] = useState("login");
@@ -18,31 +20,24 @@ export default function AuthScreen({ navigation, onLogin }) {
   const [carregando, setCarregando] = useState(false);
   const [carregandoGoogle, setCarregandoGoogle] = useState(false);
 
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: "ironeye"
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: ANDROID_CLIENT_ID,
+    webClientId: WEB_CLIENT_ID,
+    responseType: AuthSession.ResponseType.Code,
+    scopes: ["openid", "profile", "email"],
   });
 
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: GOOGLE_CLIENT_ID,
-      scopes: ["openid", "profile", "email"],
-      redirectUri: redirectUri,
-      responseType: AuthSession.ResponseType.Code,
-    },
-    {
-      authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-    }
-  );
-
   React.useEffect(() => {
-    console.log("[GOOGLE AUTH LOG] AuthSession redirectUri configured as:", redirectUri);
-  }, [redirectUri]);
+    if (request?.redirectUri) {
+      console.log("[GOOGLE AUTH LOG] Google Provider redirectUri:", request.redirectUri);
+    }
+  }, [request]);
 
   React.useEffect(() => {
     if (response?.type === "success") {
       const { code } = response.params;
       const codeVerifier = request?.codeVerifier;
-      const usedRedirectUri = request?.redirectUri || redirectUri;
+      const usedRedirectUri = request?.redirectUri;
       console.log("[GOOGLE AUTH LOG] Auth success. code:", !!code, "usedRedirectUri:", usedRedirectUri, "codeVerifier:", !!codeVerifier);
       loginComGoogle(code, usedRedirectUri, codeVerifier);
     } else if (response?.type === "error") {
