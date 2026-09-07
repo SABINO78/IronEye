@@ -70,15 +70,11 @@ def login_google():
     dados = request.json or {}
     code = dados.get("code")
     redirect_uri = dados.get("redirect_uri")
-    code_verifier = dados.get("code_verifier")
-
-    print(f"[GOOGLE AUTH LOG] Executing /login-google. redirect_uri={redirect_uri}, code_verifier_present={bool(code_verifier)}")
 
     if not code or not redirect_uri:
-        print("[GOOGLE AUTH LOG] Missing code or redirect_uri in request.")
         return jsonify({"erro": "Código ou redirect_uri em falta"}), 400
 
-    # 1. Trocar o "code" por um access_token junto da Google
+    # 1. Troca o código pelo token
     payload = {
         "code": code,
         "client_id": os.getenv("GOOGLE_CLIENT_ID"),
@@ -86,67 +82,53 @@ def login_google():
         "redirect_uri": redirect_uri,
         "grant_type": "authorization_code",
     }
-    if code_verifier:
-        payload["code_verifier"] = code_verifier
 
-    token_resposta = req_lib.post(
-        "https://oauth2.googleapis.com/token",
-        data=payload
-    )
-
+    token_resposta = req_lib.post("https://oauth2.googleapis.com/token", data=payload)
     if token_resposta.status_code != 200:
-        print(f"[GOOGLE AUTH LOG] Error in Google token exchange ({token_resposta.status_code}): {token_resposta.text}")
-        return jsonify({
-            "erro": "Falha ao trocar código com a Google",
-            "detalhe": token_resposta.json()
-        }), 401
+        return jsonify({"erro": "Falha ao trocar código com a Google", "detalhe": token_resposta.json()}), 401
 
-    token_dados = token_resposta.json()
-    access_token = token_dados.get("access_token")
+    access_token = token_resposta.json().get("access_token")
 
-    # 2. Usar o access_token para obter os dados do utilizador
+    # 2. Obtém os dados da conta Google
     resposta_google = req_lib.get(
         "https://www.googleapis.com/oauth2/v3/userinfo",
         headers={"Authorization": f"Bearer {access_token}"}
     )
-
     if resposta_google.status_code != 200:
-        print(f"[GOOGLE AUTH LOG] Error getting Google userinfo ({resposta_google.status_code}): {resposta_google.text}")
         return jsonify({"erro": "Token da Google inválido"}), 401
 
-    info_google = resposta_google.json()
-    email = info_google.get("email")
-    print(f"[GOOGLE AUTH LOG] Successfully retrieved Google account email: {email}")
+    email = resposta_google.json().get("email")
 
-    # 3. Procurar ou criar o utilizador
+    # 3. Verifica o utilizador na BD
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT id FROM users WHERE email = %s", (email,))
+    c.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,))
     utilizador = c.fetchone()
 
     if utilizador:
-        user_id = utilizador[0]
-        print(f"[GOOGLE AUTH LOG] Existing user found in DB. ID: {user_id}")
+        user_id, password_hash = utilizador
+        # Se tem password_hash preenchida, criou conta manual com email/password
+        if password_hash and password_hash.strip() != "":
+            conn.close()
+            return jsonify({
+                "erro": "Este email já está registado com password. Inicie sessão usando email e password."
+            }), 400
     else:
+        # Novo utilizador registado via Google (sem password hash)
         c.execute(
             "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
             (email, "")
         )
         user_id = c.fetchone()[0]
         conn.commit()
-        print(f"[GOOGLE AUTH LOG] Created new user in DB. ID: {user_id}")
 
     conn.close()
 
-    # 4. Gerar o teu próprio token JWT
+    # 4. Gera o token JWT da tua aplicação
     token = jwt.encode(
-        {
-            "user_id": user_id,
-            "exp": datetime.now(timezone.utc) + timedelta(days=30)
-        },
+        {"user_id": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=30)},
         os.getenv("SECRET_KEY"),
         algorithm="HS256"
     )
 
-    print("[GOOGLE AUTH LOG] JWT token generated successfully. Responding to client.")
     return jsonify({"token": token}), 200
