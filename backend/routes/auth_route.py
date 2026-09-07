@@ -82,10 +82,10 @@ def login_google_direct():
     token_google = dados.get("token")
 
     if not token_google:
-        return jsonify({"erro": "Token da Google em falta"}), 400
+        return jsonify({"erro": "Google token is missing."}), 400
 
     try:
-        # 1. Valida o idToken recebido do app mobile
+        # 1. Valida o token nativo da Google
         id_info = id_token.verify_oauth2_token(
             token_google,
             google_requests.Request(),
@@ -94,21 +94,16 @@ def login_google_direct():
 
         email = id_info.get("email")
         if not email:
-            return jsonify({"erro": "Email não fornecido pela Google"}), 400
+            return jsonify({"erro": "Email not provided by Google."}), 400
 
-        # 2. Verifica o utilizador na BD
+        # 2. Verifica se o utilizador já existe na BD
         conn = get_db()
         c = conn.cursor()
-        c.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,))
+        c.execute("SELECT id FROM users WHERE email = %s", (email,))
         utilizador = c.fetchone()
 
         if utilizador:
-            user_id, password_hash = utilizador
-            if password_hash and password_hash.strip() != "":
-                conn.close()
-                return jsonify({
-                    "erro": "Este email já está registado com password. Inicie sessão usando email e password."
-                }), 400
+            user_id = utilizador[0]
         else:
             # Regista novo utilizador vindo da Google
             c.execute(
@@ -130,6 +125,6 @@ def login_google_direct():
         return jsonify({"token": token}), 200
 
     except ValueError:
-        return jsonify({"erro": "Token da Google inválido ou expirado"}), 401
+        return jsonify({"erro": "Invalid or expired Google token."}), 401
     except Exception as e:
-        return jsonify({"erro": "Erro interno ao processar login com Google"}), 500
+        return jsonify({"erro": "Internal server error processing Google sign-in."}), 500
