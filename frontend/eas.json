@@ -4,6 +4,12 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "__all__": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://jdmirquusnssngxyzahb.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_lpbed-OciN-ssftuqBUFeA_RBvvBIr7"
+      }
+    },
     "development": {
       "developmentClient": true,
       "distribution": "internal"
@@ -15,7 +21,10 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   },
   "submit": {

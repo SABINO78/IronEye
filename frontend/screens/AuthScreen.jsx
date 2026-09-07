@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { Eye, Mail, Lock } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
-import { supabase } from "../lib/supabase"; // Garante que o caminho para o teu ficheiro supabase.js está correto
+import * as AuthSession from "expo-auth-session";
 import { API_URL } from "../config";
 
 WebBrowser.maybeCompleteAuthSession();
+
+// Garante que o CLIENT_ID do Google está no teu .env ou config
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID; 
 
 export default function AuthScreen({ navigation, onLogin }) {
   const [modo, setModo] = useState("login");
@@ -16,21 +19,7 @@ export default function AuthScreen({ navigation, onLogin }) {
   const [carregando, setCarregando] = useState(false);
   const [carregandoGoogle, setCarregandoGoogle] = useState(false);
 
-  // Escuta as alterações de sessão do Supabase
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        console.log("[SUPABASE LOG] Utilizador autenticado com sucesso!");
-        await AsyncStorage.setItem("token", session.access_token);
-        setCarregandoGoogle(false);
-        onLogin();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Login/Registo tradicional com o teu backend Flask
+  // Submeter Login/Registo Normal
   async function submeter() {
     if (carregando) return;
     setErro(null);
@@ -62,33 +51,65 @@ export default function AuthScreen({ navigation, onLogin }) {
       }
     } catch (erro) {
       console.error("Erro no login/registo:", erro);
-      setErro("No connection to server. Please check if backend is running.");
+      setErro("No connection to server.");
     } finally {
       setCarregando(false);
     }
   }
 
-  // Novo Login Simplificado com Google via Supabase
+  // Login Google integrado com o teu Backend Flask
   async function loginComGoogle() {
     if (carregandoGoogle) return;
     setErro(null);
     setCarregandoGoogle(true);
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: "ironeye://",
-        },
+      const redirectUri = AuthSession.makeRedirectUri({ scheme: "ironeye" });
+
+      // Configura o fluxo de PKCE com o Google
+      const request = new AuthSession.AuthRequest({
+        clientId: GOOGLE_CLIENT_ID,
+        scopes: ["openid", "profile", "email"],
+        redirectUri,
+        responseType: AuthSession.ResponseType.Code,
       });
 
-      if (error) {
-        setErro(error.message);
-        setCarregandoGoogle(false);
+      await request.makeAuthUrlAsync({
+        authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+      });
+
+      const result = await request.promptAsync({
+        authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+      });
+
+      if (result.type === "success" && result.params.code) {
+        // Envia o code e o code_verifier para o teu Flask em /login-google
+        const resposta = await fetch(`${API_URL}/login-google`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: result.params.code,
+            redirect_uri: redirectUri,
+            code_verifier: request.codeVerifier,
+          }),
+        });
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+          throw new Error(dados.erro || "Error authenticating with backend");
+        }
+
+        // Guarda o JWT gerado pelo TEU backend
+        await AsyncStorage.setItem("token", dados.token);
+        onLogin();
+      } else {
+        setErro("Google sign-in was cancelled.");
       }
     } catch (e) {
-      console.error("[SUPABASE GOOGLE ERROR]", e);
+      console.error("[GOOGLE LOGIN ERROR]", e);
       setErro("Error signing in with Google.");
+    } finally {
       setCarregandoGoogle(false);
     }
   }
