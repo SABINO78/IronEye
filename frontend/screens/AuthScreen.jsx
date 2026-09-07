@@ -3,12 +3,14 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator 
 import { Eye, Mail, Lock } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
+import * as AuthSession from "expo-auth-session";
 import { API_URL } from "../config";
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Leitura correta da variável de ambiente com o prefixo exigido pelo Expo
-const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
+  "609585601175-nue1jb7oui1thg0iqdtq74k7anej2p80.apps.googleusercontent.com";
 
 export default function AuthScreen({ navigation, onLogin }) {
   const [modo, setModo] = useState("login");
@@ -18,7 +20,7 @@ export default function AuthScreen({ navigation, onLogin }) {
   const [carregando, setCarregando] = useState(false);
   const [carregandoGoogle, setCarregandoGoogle] = useState(false);
 
-  // Submeter Login/Registo Normal
+  // Login/Registo Normal
   async function submeter() {
     if (carregando) return;
     setErro(null);
@@ -32,9 +34,8 @@ export default function AuthScreen({ navigation, onLogin }) {
     try {
       setCarregando(true);
 
-      // Timeout de segurança para evitar carregamentos infinitos caso o Render esteja lento
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s para dar tempo ao Render acordar
 
       const resposta = await fetch(`${API_URL}${endpoint}`, {
         method: "POST",
@@ -53,11 +54,13 @@ export default function AuthScreen({ navigation, onLogin }) {
 
       if (dados.token) {
         await AsyncStorage.setItem("token", dados.token);
-        onLogin();
+        if (typeof onLogin === "function") {
+          onLogin();
+        }
       }
     } catch (erro) {
       if (erro.name === "AbortError") {
-        setErro("Server took too long to respond. Try again.");
+        setErro("Server is waking up. Please try again in a few seconds.");
       } else {
         console.error("Erro no login/registo:", erro);
         setErro("No connection to server.");
@@ -67,19 +70,25 @@ export default function AuthScreen({ navigation, onLogin }) {
     }
   }
 
-  // Login Google integrado com o teu Backend Flask
+  // Login Google Nativo
   async function loginComGoogle() {
     if (carregandoGoogle) return;
     setErro(null);
+
+    if (!GOOGLE_CLIENT_ID) {
+      setErro("Google Client ID missing.");
+      return;
+    }
+
     setCarregandoGoogle(true);
 
     try {
-      // URI estática compatível com o teu registo na Google Cloud Console
+      // Garante a URI exata para a ponte do Expo Proxy e APK
       const redirectUri = "https://auth.expo.io/@sabnu_78/ironeye";
 
       const authUrl =
         `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${GOOGLE_CLIENT_ID}` +
+        `client_id=${GOOGLE_CLIENT_ID.trim()}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
         `&response_type=code` +
         `&scope=${encodeURIComponent("openid profile email")}`;
@@ -87,14 +96,18 @@ export default function AuthScreen({ navigation, onLogin }) {
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
       if (result.type === "success" && result.url) {
-        const urlObj = new URL(result.url);
-        const code = urlObj.searchParams.get("code");
+        // Extração segura do parâmetro 'code'
+        const rawUrl = result.url;
+        const code = new URLSearchParams(rawUrl.split("?")[1] || rawUrl.split("#")[1]).get("code");
 
         if (!code) {
           throw new Error("Authorization code not received from Google.");
         }
 
-        // Envia o code recebido para o teu Flask em /login-google
+        // Timeout estendido para o caso de o Render estar a arrancar
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+
         const resposta = await fetch(`${API_URL}/login-google`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -102,23 +115,32 @@ export default function AuthScreen({ navigation, onLogin }) {
             code: code,
             redirect_uri: redirectUri,
           }),
+          signal: controller.signal,
         });
 
+        clearTimeout(timeoutId);
         const dados = await resposta.json();
 
         if (!resposta.ok) {
           throw new Error(dados.erro || "Error authenticating with backend");
         }
 
-        // Guarda o JWT gerado pelo teu backend
-        await AsyncStorage.setItem("token", dados.token);
-        onLogin();
+        if (dados.token) {
+          await AsyncStorage.setItem("token", dados.token);
+          if (typeof onLogin === "function") {
+            onLogin();
+          }
+        }
       } else {
         setErro("Google sign-in was cancelled.");
       }
     } catch (e) {
-      console.error("[GOOGLE LOGIN ERROR]", e);
-      setErro(e.message || "Error signing in with Google.");
+      if (e.name === "AbortError") {
+        setErro("Backend took too long. Try again (server was sleeping).");
+      } else {
+        console.error("[GOOGLE LOGIN ERROR]", e);
+        setErro(e.message || "Error signing in with Google.");
+      }
     } finally {
       setCarregandoGoogle(false);
     }

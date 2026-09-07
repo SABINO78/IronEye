@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "IronEye",
-    "slug": "frontend",
+    "slug": "ironeye",
     "scheme": "ironeye",
     "version": "1.0.1",
     "orientation": "portrait",
