@@ -3,13 +3,12 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator 
 import { Eye, Mail, Lock } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session";
 import { API_URL } from "../config";
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Garante que o CLIENT_ID do Google está no teu .env ou config
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID; 
+// Leitura correta da variável de ambiente com o prefixo exigido pelo Expo
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
 
 export default function AuthScreen({ navigation, onLogin }) {
   const [modo, setModo] = useState("login");
@@ -32,12 +31,19 @@ export default function AuthScreen({ navigation, onLogin }) {
 
     try {
       setCarregando(true);
+
+      // Timeout de segurança para evitar carregamentos infinitos caso o Render esteja lento
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
       const resposta = await fetch(`${API_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const dados = await resposta.json();
 
       if (!resposta.ok) {
@@ -50,8 +56,12 @@ export default function AuthScreen({ navigation, onLogin }) {
         onLogin();
       }
     } catch (erro) {
-      console.error("Erro no login/registo:", erro);
-      setErro("No connection to server.");
+      if (erro.name === "AbortError") {
+        setErro("Server took too long to respond. Try again.");
+      } else {
+        console.error("Erro no login/registo:", erro);
+        setErro("No connection to server.");
+      }
     } finally {
       setCarregando(false);
     }
@@ -64,33 +74,33 @@ export default function AuthScreen({ navigation, onLogin }) {
     setCarregandoGoogle(true);
 
     try {
-      const redirectUri = AuthSession.makeRedirectUri({ scheme: "ironeye" });
+      // URI estática compatível com o teu registo na Google Cloud Console
+      const redirectUri = "https://auth.expo.io/@sabnu_78/ironeye";
 
-      // Configura o fluxo de PKCE com o Google
-      const request = new AuthSession.AuthRequest({
-        clientId: GOOGLE_CLIENT_ID,
-        scopes: ["openid", "profile", "email"],
-        redirectUri,
-        responseType: AuthSession.ResponseType.Code,
-      });
+      const authUrl =
+        `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${GOOGLE_CLIENT_ID}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent("openid profile email")}`;
 
-      await request.makeAuthUrlAsync({
-        authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-      });
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
-      const result = await request.promptAsync({
-        authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-      });
+      if (result.type === "success" && result.url) {
+        const urlObj = new URL(result.url);
+        const code = urlObj.searchParams.get("code");
 
-      if (result.type === "success" && result.params.code) {
-        // Envia o code e o code_verifier para o teu Flask em /login-google
+        if (!code) {
+          throw new Error("Authorization code not received from Google.");
+        }
+
+        // Envia o code recebido para o teu Flask em /login-google
         const resposta = await fetch(`${API_URL}/login-google`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            code: result.params.code,
+            code: code,
             redirect_uri: redirectUri,
-            code_verifier: request.codeVerifier,
           }),
         });
 
@@ -100,7 +110,7 @@ export default function AuthScreen({ navigation, onLogin }) {
           throw new Error(dados.erro || "Error authenticating with backend");
         }
 
-        // Guarda o JWT gerado pelo TEU backend
+        // Guarda o JWT gerado pelo teu backend
         await AsyncStorage.setItem("token", dados.token);
         onLogin();
       } else {
@@ -108,7 +118,7 @@ export default function AuthScreen({ navigation, onLogin }) {
       }
     } catch (e) {
       console.error("[GOOGLE LOGIN ERROR]", e);
-      setErro("Error signing in with Google.");
+      setErro(e.message || "Error signing in with Google.");
     } finally {
       setCarregandoGoogle(false);
     }
