@@ -64,10 +64,12 @@ export default function AuthScreen({ navigation, onLogin }) {
     } catch (error) {
       console.error("Google Sign-In Error:", error);
       Alert.alert("Error", "Google sign in failed or was cancelled.");
+      Alert.alert("Error", `${error.code || "no code"}: ${error.message || JSON.stringify(error)}`);
     } finally {
       setCarregando(false);
     }
   }
+
 
   async function submeter() {
     if (carregando) return;

@@ -125,6 +125,7 @@ def login_google_direct():
         return jsonify({"token": token}), 200
 
     except ValueError:
+        print(f"--- ERRO GOOGLE VALIDAÇÃO: {e} ---", flush=True)
         return jsonify({"erro": "Invalid or expired Google token."}), 401
     except Exception as e:
         return jsonify({"erro": "Internal server error processing Google sign-in."}), 500
