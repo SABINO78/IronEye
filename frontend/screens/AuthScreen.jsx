@@ -20,30 +20,32 @@ export default function AuthScreen({ navigation, onLogin }) {
   const [erro, setErro] = useState(null);
   const [carregando, setCarregando] = useState(false);
 
-  // Configuração inicial como no vídeo
   useEffect(() => {
     GoogleSignin.configure({
       webClientId:
-        "609585601175-nue1jb7oui1thg0iqdtq74k7anej2p80.apps.googleusercontent.com", // O teu Web Client ID
+        "609585601175-nue1jb7oui1thg0iqdtq74k7anej2p80.apps.googleusercontent.com",
       offlineAccess: true,
     });
   }, []);
 
-  // Função disparada ao clicar no botão da Google
   async function fazerLoginGoogle() {
     try {
       setCarregando(true);
       setErro(null);
 
-      // Verifica se o telemóvel tem o Google Play Services instalado
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
-      // Inicia o fluxo nativo da Google
+      // Limpa a sessão local anterior para forçar o ecrã de seleção de contas
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Ignora caso não existisse nenhuma sessão ativa para fazer logout
+      }
+
       const userInfo = await GoogleSignin.signIn();
       const idToken = userInfo.data?.idToken || userInfo.idToken;
 
       if (idToken) {
-        // Envia o idToken para o teu backend no Render / Supabase
         const respostaBackend = await fetch(`${API_URL}/login-google-direct`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -67,7 +69,6 @@ export default function AuthScreen({ navigation, onLogin }) {
     }
   }
 
-  // Submissão do formulário tradicional
   async function submeter() {
     if (carregando) return;
     setErro(null);

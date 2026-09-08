@@ -35,8 +35,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "fad39a5a-2f21-47f3-a8c3-29e4cdcb494b"
+        "projectId": "f6cf6db8-668f-4ff4-8de4-c46aed0d5129"
       }
-    }
+    },
+    "owner": "sabino_78"
   }
 }
