@@ -20,11 +20,6 @@ export default function AuthScreen({ navigation, onLogin }) {
   const [carregando, setCarregando] = useState(false);
 
 
-  function fazerLoginGoogle() {
-    Alert.alert("Coming Soon", "Google Sign-In will be available soon.");
-  }
-
-
   async function submeter() {
     if (carregando) return;
     setErro(null);
@@ -136,12 +131,6 @@ export default function AuthScreen({ navigation, onLogin }) {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.botaoGoogle, { opacity: 0.6 }]}
-        onPress={fazerLoginGoogle}
-      >
-        <Text style={styles.botaoGoogleTexto}>Continue with Google</Text>
-      </TouchableOpacity>
     </View>
   );
 }
