@@ -24,7 +24,7 @@ import { API_URL } from "../config";
 
 export default function ProScreen({ navigation }) {
   const [isPremium, setIsPremium] = useState(false);
-  const [precoFormatado, setPrecoFormatado] = useState("€5.99");
+  const [precoFormatado, setPrecoFormatado] = useState(null);
   const [carregando, setCarregando] = useState(false);
 
   useEffect(() => {
@@ -35,13 +35,21 @@ export default function ProScreen({ navigation }) {
   async function carregarPreco() {
     try {
       const offerings = await Purchases.getOfferings();
-      if (offerings.current?.monthly?.product?.priceString) {
-        setPrecoFormatado(offerings.current.monthly.product.priceString);
-      } else if (offerings.current?.availablePackages?.[0]?.product?.priceString) {
-        setPrecoFormatado(offerings.current.availablePackages[0].product.priceString);
+      console.log("OFFERINGS:", JSON.stringify(offerings, null, 2));
+
+      const pacote =
+        offerings.current?.monthly ??
+        offerings.current?.availablePackages?.[0];
+
+      if (pacote?.product?.priceString) {
+        setPrecoFormatado(pacote.product.priceString);
+      } else {
+        console.log("Nenhuma offering/package encontrada — offerings.current:", offerings.current);
+        setPrecoFormatado(null);
       }
     } catch (e) {
-      console.log("Preço padrão mantido:", e);
+      console.log("Erro ao buscar preço:", e);
+      setPrecoFormatado(null);
     }
   }
 
@@ -121,12 +129,10 @@ export default function ProScreen({ navigation }) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Botão Fechar no topo */}
       <TouchableOpacity style={styles.botaoFechar} onPress={() => navigation.goBack()}>
         <X color="#888" size={24} />
       </TouchableOpacity>
 
-      {/* Ícone de Destaque com Brilho */}
       <View style={styles.iconWrapper}>
         <View style={styles.iconCircle}>
           <Crown color="#0A0A0A" size={38} strokeWidth={2.5} />
@@ -137,7 +143,6 @@ export default function ProScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Título & Subtítulo */}
       <Text style={styles.titulo}>
         Elevate your workout with <Text style={styles.destaque}>IronEye Pro</Text>
       </Text>
@@ -145,7 +150,6 @@ export default function ProScreen({ navigation }) {
         Unlock maximum AI power at the gym. More scans, perfect form, and zero ads.
       </Text>
 
-      {/* Lista de Vantagens */}
       <View style={styles.beneficiosContainer}>
         <View style={styles.beneficioItem}>
           <View style={styles.iconeBeneficio}>
@@ -188,15 +192,20 @@ export default function ProScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Card do Preço */}
       <View style={styles.precoCard}>
         <View style={styles.tagMelhorValor}>
           <Text style={styles.tagTexto}>MONTHLY PLAN</Text>
         </View>
 
         <View style={styles.precoLinha}>
-          <Text style={styles.precoValor}>{precoFormatado}</Text>
-          <Text style={styles.precoPeriodo}> / month</Text>
+          {precoFormatado ? (
+            <>
+              <Text style={styles.precoValor}>{precoFormatado}</Text>
+              <Text style={styles.precoPeriodo}> / month</Text>
+            </>
+          ) : (
+            <ActivityIndicator color="#FF7A1A" />
+          )}
         </View>
 
         <Text style={styles.precoDesc}>
@@ -204,7 +213,6 @@ export default function ProScreen({ navigation }) {
         </Text>
       </View>
 
-      {/* Botões de Ação */}
       {isPremium ? (
         <View style={styles.cardJaPro}>
           <CheckCircle2 color="#00E676" size={22} />
@@ -225,7 +233,6 @@ export default function ProScreen({ navigation }) {
         </TouchableOpacity>
       )}
 
-      {/* Ações Secundárias */}
       <View style={styles.botoesSecundarios}>
         <TouchableOpacity onPress={restaurarCompras} disabled={carregando}>
           <Text style={styles.textoRestaurar}>Restore purchases</Text>
@@ -238,7 +245,6 @@ export default function ProScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Rodapé Legal */}
       <Text style={styles.rodapeLegal}>
         Payment is processed securely by Google Play. You can manage or cancel your subscription anytime in Play Store settings.
       </Text>
@@ -391,6 +397,8 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
     marginTop: 4,
     marginBottom: 4,
+    minHeight: 40,
+    justifyContent: "center",
   },
   precoValor: {
     color: "#FFFFFF",
