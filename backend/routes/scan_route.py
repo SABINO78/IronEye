@@ -443,8 +443,8 @@ def scan(user_id):
             "machine_found": False,
 
             "erro": (
-                "Nenhuma máquina de ginásio "
-                "encontrada na imagem"
+                "No gym machine found "
+                "in the image."
             ),
 
             "scans_restantes": max(
@@ -799,6 +799,8 @@ def scan_manual(user_id):
             "erro": (
                 "Não foi possível reconhecer "
                 "essa máquina"
+                "Could not recognize "
+                "this machine."
             ),
 
             "scans_restantes": max(
