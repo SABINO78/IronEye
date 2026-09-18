@@ -797,8 +797,6 @@ def scan_manual(user_id):
             "machine_found": False,
 
             "erro": (
-                "Não foi possível reconhecer "
-                "essa máquina"
                 "Could not recognize "
                 "this machine."
             ),
