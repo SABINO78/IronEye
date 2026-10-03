@@ -9,10 +9,13 @@ import {
     Alert,
 } from "react-native";
 
+import { ChevronLeft } from "lucide-react-native";
 import {
     CameraView,
     useCameraPermissions
 } from "expo-camera";
+
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -34,15 +37,8 @@ import { API_URL } from "../config";
 const ID_BLOCO_AD =
     "ca-app-pub-4830237129231721/7281673300";
 
-
-// DURANTE DESENVOLVIMENTO
-const AD_UNIT_ID = TestIds.REWARDED;
-
-
-// QUANDO A APP FOR PARA PRODUÇÃO,
-// TROCA PARA:
-//
-// const AD_UNIT_ID = ID_BLOCO_AD;
+// EM PRODUÇÃO
+const AD_UNIT_ID = ID_BLOCO_AD;
 
 
 
@@ -61,6 +57,8 @@ const IDIOMA_ATUAL = "en";
 ===================================================== */
 
 export default function ScanScreen({ navigation }) {
+
+    const insets = useSafeAreaInsets();
 
     /* =================================================
        CÂMARA
@@ -842,6 +840,13 @@ export default function ScanScreen({ navigation }) {
 
         <View style={styles.container}>
 
+            <TouchableOpacity 
+                style={[styles.backButton, { top: Math.max(insets.top, 20) + 10 }]}
+                onPress={() => navigation.goBack()}
+            >
+                <ChevronLeft color="#FFF" size={36} />
+            </TouchableOpacity>
+
             <CameraView
 
                 ref={(ref) =>
@@ -856,9 +861,13 @@ export default function ScanScreen({ navigation }) {
 
 
             <View
-                style={
-                    styles.bottomContainer
-                }
+                style={[
+                    styles.bottomContainer,
+                    { 
+                        paddingBottom: insets.bottom,
+                        height: 180 + insets.bottom 
+                    }
+                ]}
             >
 
                 {loading ? (
@@ -968,6 +977,17 @@ const styles = StyleSheet.create({
         backgroundColor: "#000",
     },
 
+    backButton: {
+        position: 'absolute',
+        left: 20,
+        zIndex: 10,
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        borderRadius: 22,
+    },
 
     camera: {
         flex: 1,

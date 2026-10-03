@@ -22,7 +22,7 @@ import {
 
 import { API_URL } from "../config";
 
-const AD_UNIT_ID = TestIds.REWARDED;
+const AD_UNIT_ID = "ca-app-pub-4830237129231721/7281673300";
 const IDIOMA_ATUAL = "en";
 
 
