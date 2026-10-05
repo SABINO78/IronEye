@@ -1,116 +1,111 @@
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useState, useEffect } from "react";
-import { User, Calendar, LogOut, ArrowLeft, Shield } from "lucide-react-native";
+import { User, Calendar, LogOut, ArrowLeft } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../config";
 
 export default function Profile({ navigation, onLogout }) {
-    const [perfil, setPerfil] = useState(null);
-    const [carregando, setCarregando] = useState(true);
-    const [erro, setErro] = useState(null);
+    const [profile, setProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        carregarPerfil();
+        loadProfile();
     }, []);
 
-    async function carregarPerfil() {
+    async function loadProfile() {
         try {
-            setCarregando(true);
+            setLoading(true);
             const token = await AsyncStorage.getItem("token");
             if (!token) return;
 
-            const resposta = await fetch(`${API_URL}/profile`, {
+            const response = await fetch(`${API_URL}/profile`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${token}`
                 }
             });
-            const dados = await resposta.json();
-            if (resposta.ok) {
-                setPerfil(dados);
+            const data = await response.json();
+            if (response.ok) {
+                setProfile(data);
             } else {
-                setErro("Could not load profile data");
+                setError("Could not load profile data");
             }
-        } catch (erro) {
-            setErro("No connection to server");
+        } catch (err) {
+            setError("No connection to server");
         } finally {
-            setCarregando(false);
+            setLoading(false);
         }
     }
 
-    async function fazerLogout() {
+    async function handleLogout() {
         await AsyncStorage.removeItem("token");
         if (onLogout) {
             onLogout();
         }
     }
 
-    function formatarData(dataIso) {
-        if (!dataIso) return "Recent";
+    function formatDate(isoDate) {
+        if (!isoDate) return "Recent";
         try {
-            const d = new Date(dataIso);
-            if (isNaN(d.getTime())) return dataIso;
+            const d = new Date(isoDate);
+            if (isNaN(d.getTime())) return isoDate;
             return d.toLocaleDateString("en-US", {
                 day: "numeric",
                 month: "long",
                 year: "numeric"
             });
         } catch (e) {
-            return dataIso;
+            return isoDate;
         }
     }
 
     return (
         <View style={styles.container}>
-            {/* Top Bar com Botão Voltar */}
-            <TouchableOpacity style={styles.botaoTopoVoltar} onPress={() => navigation.goBack()}>
+            <TouchableOpacity style={styles.topBackButton} onPress={() => navigation.goBack()}>
                 <ArrowLeft color="#FF7A1A" size={22} />
-                <Text style={styles.topoVoltarTexto}>Back</Text>
+                <Text style={styles.topBackText}>Back</Text>
             </TouchableOpacity>
 
             <View style={styles.content}>
-                {/* Avatar com Ícone */}
                 <View style={styles.avatarCircle}>
                     <User color="#0A0A0E" size={44} strokeWidth={2.2} />
                 </View>
 
-                <Text style={styles.tituloPerfil}>Your Profile</Text>
+                <Text style={styles.profileTitle}>Your Profile</Text>
 
-                {carregando ? (
+                {loading ? (
                     <ActivityIndicator size="large" color="#FF7A1A" style={{ marginVertical: 30 }} />
-                ) : perfil ? (
+                ) : profile ? (
                     <View style={styles.cardsContainer}>
-                        {/* Card do Email */}
                         <View style={styles.infoCard}>
                             <View style={styles.infoIconBox}>
                                 <User color="#FF7A1A" size={20} />
                             </View>
                             <View style={styles.infoTexts}>
                                 <Text style={styles.infoLabel}>ACCOUNT EMAIL</Text>
-                                <Text style={styles.infoValor} numberOfLines={1}>{perfil.email}</Text>
+                                <Text style={styles.infoValue} numberOfLines={1}>{profile.email}</Text>
                             </View>
                         </View>
 
-                        {/* Card da Data de Criação */}
                         <View style={styles.infoCard}>
                             <View style={styles.infoIconBox}>
                                 <Calendar color="#FF7A1A" size={20} />
                             </View>
                             <View style={styles.infoTexts}>
                                 <Text style={styles.infoLabel}>MEMBER SINCE</Text>
-                                <Text style={styles.infoValor}>{formatarData(perfil.created_at)}</Text>
+                                <Text style={styles.infoValue}>{formatDate(profile.created_at)}</Text>
                             </View>
                         </View>
                     </View>
                 ) : null}
 
-                {erro && <Text style={styles.erroTexto}>{erro}</Text>}
+                {error && <Text style={styles.errorText}>{error}</Text>}
 
-                {/* Botão de Logout */}
-                <TouchableOpacity style={styles.botaoLogout} onPress={fazerLogout} activeOpacity={0.85}>
+                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
                     <LogOut color="#000" size={18} />
-                    <Text style={styles.botaoLogoutTexto}>Log Out</Text>
+                    <Text style={styles.logoutButtonText}>Log Out</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -125,14 +120,14 @@ const styles = StyleSheet.create({
         paddingTop: 55,
         paddingBottom: 30,
     },
-    botaoTopoVoltar: {
+    topBackButton: {
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
         alignSelf: "flex-start",
         marginBottom: 20,
     },
-    topoVoltarTexto: {
+    topBackText: {
         color: "#FF7A1A",
         fontSize: 16,
         fontWeight: "600",
@@ -155,7 +150,7 @@ const styles = StyleSheet.create({
         shadowRadius: 14,
         elevation: 10,
     },
-    tituloPerfil: {
+    profileTitle: {
         color: "#FFFFFF",
         fontSize: 22,
         fontWeight: "800",
@@ -194,12 +189,12 @@ const styles = StyleSheet.create({
         letterSpacing: 0.6,
         marginBottom: 3,
     },
-    infoValor: {
+    infoValue: {
         color: "#FFFFFF",
         fontSize: 15,
         fontWeight: "600",
     },
-    botaoLogout: {
+    logoutButton: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
@@ -210,12 +205,12 @@ const styles = StyleSheet.create({
         gap: 8,
         marginTop: 10,
     },
-    botaoLogoutTexto: {
+    logoutButtonText: {
         color: "#000000",
         fontSize: 15,
         fontWeight: "800",
     },
-    erroTexto: {
+    errorText: {
         color: "#FF4444",
         fontSize: 13,
         textAlign: "center",

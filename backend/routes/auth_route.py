@@ -16,12 +16,12 @@ GOOGLE_WEB_CLIENT_ID = "609585601175-nue1jb7oui1thg0iqdtq74k7anej2p80.apps.googl
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
-    dados = request.json or {}
-    email = dados.get("email")
-    password = dados.get("password")
+    data = request.json or {}
+    email = data.get("email")
+    password = data.get("password")
 
     if not email or not password:
-        return jsonify({"erro": "Email e password são obrigatórios"}), 400
+        return jsonify({"erro": "Email and password are required"}), 400
 
     password_hash = generate_password_hash(password)
     conn = get_db()
@@ -32,41 +32,41 @@ def register():
             "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
             (email, password_hash)
         )
-        novo_id = c.fetchone()[0]
+        new_id = c.fetchone()[0]
         conn.commit()
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
-        return jsonify({"erro": "Email já registado"}), 400
+        return jsonify({"erro": "Email already registered"}), 400
     finally:
         conn.close()
 
     token = jwt.encode(
-        {"user_id": novo_id, "exp": datetime.now(timezone.utc) + timedelta(days=30)},
+        {"user_id": new_id, "exp": datetime.now(timezone.utc) + timedelta(days=30)},
         os.getenv("SECRET_KEY"),
         algorithm="HS256"
     )
-    return jsonify({"mensagem": "Conta criada com sucesso", "token": token}), 201
+    return jsonify({"mensagem": "Account created successfully", "token": token}), 201
 
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    dados = request.json or {}
-    email = dados.get("email")
-    password = dados.get("password")
+    data = request.json or {}
+    email = data.get("email")
+    password = data.get("password")
 
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,))
-    utilizador = c.fetchone()
+    user = c.fetchone()
     conn.close()
 
-    if not utilizador:
-        return jsonify({"erro": "Email ou password incorretos"}), 401
+    if not user:
+        return jsonify({"erro": "Incorrect email or password"}), 401
 
-    user_id, password_hash = utilizador
+    user_id, password_hash = user
 
     if not check_password_hash(password_hash, password):
-        return jsonify({"erro": "Email ou password incorretos"}), 401
+        return jsonify({"erro": "Incorrect email or password"}), 401
 
     token = jwt.encode(
         {"user_id": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=30)},
@@ -78,16 +78,15 @@ def login():
 
 @auth_bp.route("/login-google-direct", methods=["POST"])
 def login_google_direct():
-    dados = request.json or {}
-    token_google = dados.get("token")
+    data = request.json or {}
+    google_token = data.get("token")
 
-    if not token_google:
+    if not google_token:
         return jsonify({"erro": "Google token is missing."}), 400
 
     try:
-        # 1. Valida o token nativo da Google
         id_info = id_token.verify_oauth2_token(
-            token_google,
+            google_token,
             google_requests.Request(),
             GOOGLE_WEB_CLIENT_ID
         )
@@ -96,16 +95,15 @@ def login_google_direct():
         if not email:
             return jsonify({"erro": "Email not provided by Google."}), 400
 
-        # 2. Verifica se o utilizador já existe na BD
         conn = get_db()
         c = conn.cursor()
         c.execute("SELECT id FROM users WHERE email = %s", (email,))
-        utilizador = c.fetchone()
+        user = c.fetchone()
 
-        if utilizador:
-            user_id = utilizador[0]
+        if user:
+            user_id = user[0]
         else:
-            # Regista novo utilizador vindo da Google
+            # Register new user coming from Google (no password hash needed)
             c.execute(
                 "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
                 (email, "")
@@ -115,7 +113,6 @@ def login_google_direct():
 
         conn.close()
 
-        # 3. Gera o token JWT da app
         token = jwt.encode(
             {"user_id": user_id, "exp": datetime.now(timezone.utc) + timedelta(days=30)},
             os.getenv("SECRET_KEY"),
@@ -125,7 +122,7 @@ def login_google_direct():
         return jsonify({"token": token}), 200
 
     except ValueError:
-        print(f"--- ERRO GOOGLE VALIDAÇÃO: {e} ---", flush=True)
+        print(f"--- GOOGLE VALIDATION ERROR: {e} ---", flush=True)
         return jsonify({"erro": "Invalid or expired Google token."}), 401
     except Exception as e:
         return jsonify({"erro": "Internal server error processing Google sign-in."}), 500

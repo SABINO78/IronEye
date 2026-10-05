@@ -11,11 +11,11 @@ def profile(user_id):
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT email, created_at FROM users WHERE id = %s", (user_id,))
-    utilizador = c.fetchone()
+    user = c.fetchone()
     conn.close()
 
-    if not utilizador:
-        return jsonify({"erro": "Utilizador não encontrado"}), 404
+    if not user:
+        return jsonify({"erro": "User not found"}), 404
 
-    email, created_at = utilizador
+    email, created_at = user
     return jsonify({"email": email, "created_at": created_at})

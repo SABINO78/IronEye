@@ -14,29 +14,29 @@ export default function HistoryScreen({ navigation }) {
   const [scans, setScans] = useState(null);
 
   useEffect(() => {
-    carregarHistorico();
+    loadHistory();
   }, []);
 
-  async function carregarHistorico() {
+  async function loadHistory() {
     try {
       const token = await AsyncStorage.getItem("token");
 
-      const resposta = await fetch(`${API_URL}/history`, {
+      const response = await fetch(`${API_URL}/history`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
 
-      const dados = await resposta.json();
+      const data = await response.json();
 
-      if (resposta.ok) {
-        setScans(dados);
+      if (response.ok) {
+        setScans(data);
       } else {
         setScans([]);
       }
-    } catch (erro) {
-      console.log(erro);
+    } catch (err) {
+      console.log(err);
       setScans([]);
     }
   }
@@ -51,16 +51,14 @@ export default function HistoryScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-
-      {/* Botão de voltar */}
       <TouchableOpacity
-        style={styles.botaoVoltar}
+        style={styles.backButton}
         onPress={() => navigation.goBack()}
       >
-        <Text style={styles.voltarTexto}>← Back</Text>
+        <Text style={styles.backButtonText}>← Back</Text>
       </TouchableOpacity>
 
-      <Text style={styles.titulo}>History</Text>
+      <Text style={styles.title}>History</Text>
 
       <FlatList
         data={scans}
@@ -74,18 +72,18 @@ export default function HistoryScreen({ navigation }) {
               })
             }
           >
-            <View style={styles.numero}>
-              <Text style={styles.numeroTexto}>
+            <View style={styles.badgeNumber}>
+              <Text style={styles.badgeNumberText}>
                 {index + 1}
               </Text>
             </View>
 
             <View style={styles.info}>
-              <Text style={styles.nome}>
+              <Text style={styles.name}>
                 {item.machine_name}
               </Text>
 
-              <Text style={styles.musculo}>
+              <Text style={styles.muscle}>
                 {item.primary_muscle}
                 {item.secondary_muscles.length > 0
                   ? ` • ${item.secondary_muscles.join(" • ")}`
@@ -93,8 +91,8 @@ export default function HistoryScreen({ navigation }) {
               </Text>
             </View>
 
-            <View style={styles.direita}>
-              <Text style={styles.hora}>
+            <View style={styles.rightSide}>
+              <Text style={styles.timeText}>
                 {new Date(item.scanned_at).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -104,7 +102,7 @@ export default function HistoryScreen({ navigation }) {
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          <Text style={styles.vazio}>
+          <Text style={styles.emptyText}>
             You haven't made any scans yet.
           </Text>
         }
@@ -128,19 +126,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  titulo: {
+  title: {
     color: "#FFF",
     fontSize: 28,
     fontWeight: "bold",
     marginBottom: 20,
   },
 
-  botaoVoltar: {
+  backButton: {
     paddingVertical: 10,
     marginBottom: 10,
   },
 
-  voltarTexto: {
+  backButtonText: {
     color: "#FF8C00",
     fontSize: 16,
     fontWeight: "600",
@@ -155,7 +153,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  numero: {
+  badgeNumber: {
     width: 45,
     height: 45,
     borderRadius: 22,
@@ -165,7 +163,7 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
 
-  numeroTexto: {
+  badgeNumberText: {
     color: "#FFF",
     fontWeight: "bold",
     fontSize: 18,
@@ -175,27 +173,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  nome: {
+  name: {
     color: "#FFF",
     fontWeight: "bold",
     fontSize: 17,
   },
 
-  musculo: {
+  muscle: {
     color: "#999",
     marginTop: 4,
   },
 
-  direita: {
+  rightSide: {
     alignItems: "flex-end",
   },
 
-  hora: {
+  timeText: {
     color: "#FFF",
     fontWeight: "bold",
   },
 
-  vazio: {
+  emptyText: {
     color: "#888",
     textAlign: "center",
     marginTop: 50,

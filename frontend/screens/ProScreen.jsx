@@ -24,32 +24,29 @@ import { API_URL } from "../config";
 
 export default function ProScreen({ navigation }) {
   const [isPremium, setIsPremium] = useState(false);
-  const [precoFormatado, setPrecoFormatado] = useState(null);
-  const [carregando, setCarregando] = useState(false);
+  const [formattedPrice, setFormattedPrice] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     checkEntitlement();
-    carregarPreco();
+    loadPrice();
   }, []);
 
-  async function carregarPreco() {
+  async function loadPrice() {
     try {
       const offerings = await Purchases.getOfferings();
-      console.log("OFFERINGS:", JSON.stringify(offerings, null, 2));
-
-      const pacote =
+      const pkg =
         offerings.current?.monthly ??
         offerings.current?.availablePackages?.[0];
 
-      if (pacote?.product?.priceString) {
-        setPrecoFormatado(pacote.product.priceString);
+      if (pkg?.product?.priceString) {
+        setFormattedPrice(pkg.product.priceString);
       } else {
-        console.log("Nenhuma offering/package encontrada — offerings.current:", offerings.current);
-        setPrecoFormatado(null);
+        setFormattedPrice(null);
       }
     } catch (e) {
-      console.log("Erro ao buscar preço:", e);
-      setPrecoFormatado(null);
+      console.log("Error fetching price:", e);
+      setFormattedPrice(null);
     }
   }
 
@@ -60,11 +57,11 @@ export default function ProScreen({ navigation }) {
         setIsPremium(true);
       }
     } catch (e) {
-      console.error("Erro ao verificar entitlement:", e);
+      console.error("Error checking entitlement:", e);
     }
   }
 
-  async function sincronizarComBackend() {
+  async function syncWithBackend() {
     try {
       const token = await AsyncStorage.getItem("token");
       if (!token) return;
@@ -77,21 +74,21 @@ export default function ProScreen({ navigation }) {
         },
       });
     } catch (e) {
-      console.error("Erro ao sincronizar com o backend:", e);
+      console.error("Error syncing with backend:", e);
     }
   }
 
-  async function subscrever() {
-    if (carregando) return;
+  async function subscribe() {
+    if (loading) return;
     try {
-      setCarregando(true);
+      setLoading(true);
       const paywallResult = await RevenueCatUI.presentPaywall();
 
       switch (paywallResult) {
         case PAYWALL_RESULT.PURCHASED:
         case PAYWALL_RESULT.RESTORED:
           setIsPremium(true);
-          await sincronizarComBackend();
+          await syncWithBackend();
           Alert.alert("IronEye Pro 🎉", "Subscription activated successfully! Enjoy your workout.");
           break;
         case PAYWALL_RESULT.CANCELLED:
@@ -100,22 +97,22 @@ export default function ProScreen({ navigation }) {
         default:
           break;
       }
-    } catch (erro) {
-      console.error("Erro ao abrir paywall:", erro);
+    } catch (err) {
+      console.error("Error opening paywall:", err);
       Alert.alert("Warning", "Could not open payment window. Please check your connection.");
     } finally {
-      setCarregando(false);
+      setLoading(false);
     }
   }
 
-  async function restaurarCompras() {
-    if (carregando) return;
+  async function restorePurchases() {
+    if (loading) return;
     try {
-      setCarregando(true);
+      setLoading(true);
       const customerInfo = await Purchases.restorePurchases();
       if (typeof customerInfo.entitlements.active["IronEye Pro"] !== "undefined") {
         setIsPremium(true);
-        await sincronizarComBackend();
+        await syncWithBackend();
         Alert.alert("Success", "Your subscription was restored successfully!");
       } else {
         Alert.alert("Info", "No active purchases found for this account.");
@@ -123,13 +120,13 @@ export default function ProScreen({ navigation }) {
     } catch (e) {
       Alert.alert("Error", "Could not verify previous purchases.");
     } finally {
-      setCarregando(false);
+      setLoading(false);
     }
   }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <TouchableOpacity style={styles.botaoFechar} onPress={() => navigation.goBack()}>
+      <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
         <X color="#888" size={24} />
       </TouchableOpacity>
 
@@ -137,115 +134,115 @@ export default function ProScreen({ navigation }) {
         <View style={styles.iconCircle}>
           <Crown color="#0A0A0A" size={38} strokeWidth={2.5} />
         </View>
-        <View style={styles.badgeTopo}>
+        <View style={styles.topBadge}>
           <Sparkles color="#FF7A1A" size={12} />
-          <Text style={styles.badgeTexto}>PREMIUM ACCESS</Text>
+          <Text style={styles.badgeText}>PREMIUM ACCESS</Text>
         </View>
       </View>
 
-      <Text style={styles.titulo}>
-        Elevate your workout with <Text style={styles.destaque}>IronEye Pro</Text>
+      <Text style={styles.title}>
+        Elevate your workout with <Text style={styles.highlight}>IronEye Pro</Text>
       </Text>
-      <Text style={styles.subtitulo}>
+      <Text style={styles.subtitle}>
         Unlock maximum AI power at the gym. More scans, perfect form, and zero ads.
       </Text>
 
-      <View style={styles.beneficiosContainer}>
-        <View style={styles.beneficioItem}>
-          <View style={styles.iconeBeneficio}>
+      <View style={styles.benefitsContainer}>
+        <View style={styles.benefitItem}>
+          <View style={styles.benefitIcon}>
             <Zap color="#FF7A1A" size={20} />
           </View>
-          <View style={styles.beneficioTextoContainer}>
-            <Text style={styles.beneficioTitulo}>20 AI Scans Per Day</Text>
-            <Text style={styles.beneficioDesc}>5x more capacity for complete workout sessions.</Text>
+          <View style={styles.benefitTextContainer}>
+            <Text style={styles.benefitTitle}>20 AI Scans Per Day</Text>
+            <Text style={styles.benefitDesc}>5x more capacity for complete workout sessions.</Text>
           </View>
         </View>
 
-        <View style={styles.beneficioItem}>
-          <View style={styles.iconeBeneficio}>
+        <View style={styles.benefitItem}>
+          <View style={styles.benefitIcon}>
             <CheckCircle2 color="#FF7A1A" size={20} />
           </View>
-          <View style={styles.beneficioTextoContainer}>
-            <Text style={styles.beneficioTitulo}>Muscle & Biomechanics Analysis</Text>
-            <Text style={styles.beneficioDesc}>Primary, secondary muscles, and detailed form tips.</Text>
+          <View style={styles.benefitTextContainer}>
+            <Text style={styles.benefitTitle}>Muscle & Biomechanics Analysis</Text>
+            <Text style={styles.benefitDesc}>Primary, secondary muscles, and detailed form tips.</Text>
           </View>
         </View>
 
-        <View style={styles.beneficioItem}>
-          <View style={styles.iconeBeneficio}>
+        <View style={styles.benefitItem}>
+          <View style={styles.benefitIcon}>
             <History color="#FF7A1A" size={20} />
           </View>
-          <View style={styles.beneficioTextoContainer}>
-            <Text style={styles.beneficioTitulo}>Complete Exercise History</Text>
-            <Text style={styles.beneficioDesc}>View and review all recently analyzed machines.</Text>
+          <View style={styles.benefitTextContainer}>
+            <Text style={styles.benefitTitle}>Complete Exercise History</Text>
+            <Text style={styles.benefitDesc}>View and review all recently analyzed machines.</Text>
           </View>
         </View>
 
-        <View style={styles.beneficioItem}>
-          <View style={styles.iconeBeneficio}>
+        <View style={styles.benefitItem}>
+          <View style={styles.benefitIcon}>
             <ShieldCheck color="#FF7A1A" size={20} />
           </View>
-          <View style={styles.beneficioTextoContainer}>
-            <Text style={styles.beneficioTitulo}>100% Ad-Free</Text>
-            <Text style={styles.beneficioDesc}>Total focus on your weights without interruptions or waiting.</Text>
+          <View style={styles.benefitTextContainer}>
+            <Text style={styles.benefitTitle}>100% Ad-Free</Text>
+            <Text style={styles.benefitDesc}>Total focus on your weights without interruptions or waiting.</Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.precoCard}>
-        <View style={styles.tagMelhorValor}>
-          <Text style={styles.tagTexto}>MONTHLY PLAN</Text>
+      <View style={styles.priceCard}>
+        <View style={styles.bestValueTag}>
+          <Text style={styles.tagText}>MONTHLY PLAN</Text>
         </View>
 
-        <View style={styles.precoLinha}>
-          {precoFormatado ? (
+        <View style={styles.priceRow}>
+          {formattedPrice ? (
             <>
-              <Text style={styles.precoValor}>{precoFormatado}</Text>
-              <Text style={styles.precoPeriodo}> / month</Text>
+              <Text style={styles.priceValue}>{formattedPrice}</Text>
+              <Text style={styles.pricePeriod}> / month</Text>
             </>
           ) : (
             <ActivityIndicator color="#FF7A1A" />
           )}
         </View>
 
-        <Text style={styles.precoDesc}>
+        <Text style={styles.priceDesc}>
           Cancel anytime on Google Play. No commitment.
         </Text>
       </View>
 
       {isPremium ? (
-        <View style={styles.cardJaPro}>
+        <View style={styles.alreadyProCard}>
           <CheckCircle2 color="#00E676" size={22} />
-          <Text style={styles.textoJaPro}>You are an IronEye Pro member ✅</Text>
+          <Text style={styles.alreadyProText}>You are an IronEye Pro member ✅</Text>
         </View>
       ) : (
         <TouchableOpacity
-          style={styles.botaoPrincipal}
-          onPress={subscrever}
-          disabled={carregando}
+          style={styles.mainButton}
+          onPress={subscribe}
+          disabled={loading}
           activeOpacity={0.85}
         >
-          {carregando ? (
+          {loading ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <Text style={styles.botaoPrincipalTexto}>Go Pro 🔥</Text>
+            <Text style={styles.mainButtonText}>Go Pro 🔥</Text>
           )}
         </TouchableOpacity>
       )}
 
-      <View style={styles.botoesSecundarios}>
-        <TouchableOpacity onPress={restaurarCompras} disabled={carregando}>
-          <Text style={styles.textoRestaurar}>Restore purchases</Text>
+      <View style={styles.secondaryButtons}>
+        <TouchableOpacity onPress={restorePurchases} disabled={loading}>
+          <Text style={styles.restoreText}>Restore purchases</Text>
         </TouchableOpacity>
 
-        <Text style={styles.separador}>•</Text>
+        <Text style={styles.separator}>•</Text>
 
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.textoDepois}>Not now</Text>
+          <Text style={styles.laterText}>Not now</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.rodapeLegal}>
+      <Text style={styles.legalFooter}>
         Payment is processed securely by Google Play. You can manage or cancel your subscription anytime in Play Store settings.
       </Text>
     </ScrollView>
@@ -263,7 +260,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     alignItems: "center",
   },
-  botaoFechar: {
+  closeButton: {
     position: "absolute",
     top: 50,
     right: 20,
@@ -293,7 +290,7 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 12,
   },
-  badgeTopo: {
+  topBadge: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#1E1A26",
@@ -305,13 +302,13 @@ const styles = StyleSheet.create({
     marginTop: -10,
     gap: 5,
   },
-  badgeTexto: {
+  badgeText: {
     color: "#FF7A1A",
     fontSize: 10,
     fontWeight: "bold",
     letterSpacing: 0.8,
   },
-  titulo: {
+  title: {
     color: "#FFFFFF",
     fontSize: 24,
     fontWeight: "800",
@@ -319,10 +316,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 30,
   },
-  destaque: {
+  highlight: {
     color: "#FF7A1A",
   },
-  subtitulo: {
+  subtitle: {
     color: "#9E9EA7",
     fontSize: 14,
     textAlign: "center",
@@ -330,7 +327,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     paddingHorizontal: 10,
   },
-  beneficiosContainer: {
+  benefitsContainer: {
     width: "100%",
     backgroundColor: "#13131C",
     borderRadius: 18,
@@ -340,12 +337,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     gap: 14,
   },
-  beneficioItem: {
+  benefitItem: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 14,
   },
-  iconeBeneficio: {
+  benefitIcon: {
     width: 38,
     height: 38,
     borderRadius: 12,
@@ -353,21 +350,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  beneficioTextoContainer: {
+  benefitTextContainer: {
     flex: 1,
   },
-  beneficioTitulo: {
+  benefitTitle: {
     color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "700",
     marginBottom: 2,
   },
-  beneficioDesc: {
+  benefitDesc: {
     color: "#8E8E98",
     fontSize: 12.5,
     lineHeight: 17,
   },
-  precoCard: {
+  priceCard: {
     width: "100%",
     backgroundColor: "#171724",
     borderRadius: 18,
@@ -378,7 +375,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     position: "relative",
   },
-  tagMelhorValor: {
+  bestValueTag: {
     position: "absolute",
     top: -11,
     backgroundColor: "#FF7A1A",
@@ -386,13 +383,13 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 12,
   },
-  tagTexto: {
+  tagText: {
     color: "#000",
     fontSize: 10,
     fontWeight: "900",
     letterSpacing: 0.6,
   },
-  precoLinha: {
+  priceRow: {
     flexDirection: "row",
     alignItems: "baseline",
     marginTop: 4,
@@ -400,22 +397,22 @@ const styles = StyleSheet.create({
     minHeight: 40,
     justifyContent: "center",
   },
-  precoValor: {
+  priceValue: {
     color: "#FFFFFF",
     fontSize: 32,
     fontWeight: "900",
   },
-  precoPeriodo: {
+  pricePeriod: {
     color: "#9E9EA7",
     fontSize: 14,
     fontWeight: "600",
   },
-  precoDesc: {
+  priceDesc: {
     color: "#7E7E8A",
     fontSize: 12,
     textAlign: "center",
   },
-  botaoPrincipal: {
+  mainButton: {
     width: "100%",
     backgroundColor: "#FF7A1A",
     paddingVertical: 16,
@@ -429,13 +426,13 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  botaoPrincipalTexto: {
+  mainButtonText: {
     color: "#000000",
     fontSize: 16,
     fontWeight: "800",
     letterSpacing: 0.3,
   },
-  cardJaPro: {
+  alreadyProCard: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -448,33 +445,33 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 16,
   },
-  textoJaPro: {
+  alreadyProText: {
     color: "#00E676",
     fontSize: 15,
     fontWeight: "700",
   },
-  botoesSecundarios: {
+  secondaryButtons: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
     marginBottom: 16,
   },
-  textoRestaurar: {
+  restoreText: {
     color: "#FF7A1A",
     fontSize: 13,
     fontWeight: "600",
   },
-  separador: {
+  separator: {
     color: "#444",
     fontSize: 13,
   },
-  textoDepois: {
+  laterText: {
     color: "#7E7E8A",
     fontSize: 13,
     fontWeight: "500",
   },
-  rodapeLegal: {
+  legalFooter: {
     color: "#5E5E6A",
     fontSize: 11,
     textAlign: "center",

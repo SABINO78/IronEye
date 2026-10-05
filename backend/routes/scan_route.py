@@ -19,7 +19,7 @@ client = Anthropic(
 MODEL = "claude-haiku-4-5-20251001"
 
 
-MAPA_LINGUAS = {
+LANGUAGE_MAP = {
     "pt": "Portuguese (Português)",
     "es": "Spanish (Español)",
     "fr": "French (Français)",
@@ -27,34 +27,25 @@ MAPA_LINGUAS = {
 }
 
 
-def limpar_resposta_json(texto):
+def clean_json_response(text):
+    # Strip markdown code fences that the model sometimes wraps the JSON in
+    text = text.strip()
 
-    texto = texto.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
 
-    if texto.startswith("```"):
-        texto = re.sub(r"^```(?:json)?\s*", "", texto)
-        texto = re.sub(r"\s*```$", "", texto)
-
-    return texto.strip()
+    return text.strip()
 
 
-# ======================================================
-# LIMITES
-# ======================================================
+BASE_LIMIT_FREE = 4
+BASE_LIMIT_PRO = 20
 
-LIMITE_BASE_FREE = 4
-LIMITE_BASE_PRO = 20
-
-# Número máximo de scans adicionais obtidos através
-# de anúncios num dia.
+# Maximum number of extra scans a free user can earn via ads per day.
 MAX_BONUS_SCANS = 2
 
 
-# ======================================================
-# BONUS SCANS
-# ======================================================
-
-def obter_bonus_hoje(user_id, conn):
+def get_bonus_today(user_id, conn):
 
     c = conn.cursor()
 
@@ -67,21 +58,20 @@ def obter_bonus_hoje(user_id, conn):
         (user_id,)
     )
 
-    resultado = c.fetchone()
+    result = c.fetchone()
 
-    if not resultado:
+    if not result:
         return 0
 
-    bonus_hoje, bonus_data = resultado
+    bonus_today, bonus_date = result
 
-    # Data atual do PostgreSQL
+    # Fetch today's date directly from PostgreSQL to avoid timezone mismatches.
     c.execute("SELECT CURRENT_DATE")
 
-    hoje = c.fetchone()[0]
+    today = c.fetchone()[0]
 
-    # Se ainda não existe data ou é outro dia,
-    # começa novamente com 0 bónus.
-    if bonus_data != hoje:
+    # If the stored date is from a previous day, reset the bonus counter.
+    if bonus_date != today:
 
         c.execute(
             """
@@ -90,34 +80,28 @@ def obter_bonus_hoje(user_id, conn):
                 bonus_scans_data = %s
             WHERE id = %s
             """,
-            (hoje, user_id)
+            (today, user_id)
         )
 
         conn.commit()
 
         return 0
 
-    return bonus_hoje
+    return bonus_today
 
 
-def obter_limite_diario(user_id, is_pro, conn):
+def get_daily_limit(user_id, is_pro, conn):
 
-    # Pro
     if is_pro:
-        return LIMITE_BASE_PRO
+        return BASE_LIMIT_PRO
 
-    # Free
-    bonus_hoje = obter_bonus_hoje(
+    bonus_today = get_bonus_today(
         user_id,
         conn
     )
 
-    return LIMITE_BASE_FREE + bonus_hoje
+    return BASE_LIMIT_FREE + bonus_today
 
-
-# ======================================================
-# SYSTEM PROMPT
-# ======================================================
 
 SYSTEM_PROMPT = """
 És um personal trainer profissional e um especialista em biomecânica de
@@ -198,10 +182,6 @@ Exemplo 2:
 """
 
 
-# ======================================================
-# SYSTEM PROMPT - MANUAL
-# ======================================================
-
 SYSTEM_PROMPT_MANUAL = """
 És um personal trainer profissional e um especialista em biomecânica de
 equipamentos de ginásio.
@@ -240,29 +220,21 @@ Não uses blocos de código markdown.
 """
 
 
-# ======================================================
-# SCAN POR IMAGEM
-# ======================================================
-
 @scan_bp.route("/scan", methods=["POST"])
 @token_required
 def scan(user_id):
 
-    dados = request.json or {}
+    data = request.json or {}
 
-    imagem_base64 = dados.get("imagem")
+    image_base64 = data.get("imagem")
 
-    if not imagem_base64:
+    if not image_base64:
 
         return jsonify({
-            "erro": "Nenhuma imagem enviada"
+            "erro": "No image provided"
         }), 400
 
-    # ==================================================
-    # IDIOMA
-    # ==================================================
-
-    idioma_cliente = (
+    client_language = (
         request.headers
         .get("Accept-Language", "en")
         .split(",")[0]
@@ -271,14 +243,10 @@ def scan(user_id):
         .lower()
     )
 
-    lingua_final = MAPA_LINGUAS.get(
-        idioma_cliente,
+    target_language = LANGUAGE_MAP.get(
+        client_language,
         "English"
     )
-
-    # ==================================================
-    # BASE DE DADOS
-    # ==================================================
 
     conn = get_db()
     c = conn.cursor()
@@ -292,23 +260,19 @@ def scan(user_id):
         (user_id,)
     )
 
-    utilizador = c.fetchone()
+    user = c.fetchone()
 
-    if not utilizador:
+    if not user:
 
         conn.close()
 
         return jsonify({
-            "erro": "Utilizador não encontrado"
+            "erro": "User not found"
         }), 404
 
-    is_pro = utilizador[0]
+    is_pro = user[0]
 
-    # ==================================================
-    # LIMITE
-    # ==================================================
-
-    limite_diario = obter_limite_diario(
+    daily_limit = get_daily_limit(
         user_id,
         is_pro,
         conn
@@ -324,25 +288,21 @@ def scan(user_id):
         (user_id,)
     )
 
-    scans_hoje = c.fetchone()[0]
+    scans_today = c.fetchone()[0]
 
-    if scans_hoje >= limite_diario:
+    if scans_today >= daily_limit:
 
         conn.close()
 
         return jsonify({
             "erro": "Limite diário atingido",
             "scans_restantes": 0,
-            "limite_diario": limite_diario
+            "limite_diario": daily_limit
         }), 403
-
-    # ==================================================
-    # CHAMAR IA
-    # ==================================================
 
     try:
 
-        resposta = client.messages.create(
+        response = client.messages.create(
 
             model=MODEL,
 
@@ -360,7 +320,7 @@ def scan(user_id):
                             "type": "text",
 
                             "text": (
-                                f'idioma_alvo: "{lingua_final}"'
+                                f'idioma_alvo: "{target_language}"'
                             )
                         },
 
@@ -373,7 +333,7 @@ def scan(user_id):
 
                                 "media_type": "image/jpeg",
 
-                                "data": imagem_base64
+                                "data": image_base64
                             }
                         }
                     ]
@@ -381,59 +341,50 @@ def scan(user_id):
             ]
         )
 
-    except Exception as erro:
+    except Exception as error:
 
         print(
-            "ERRO AO COMUNICAR COM A IA:",
-            erro
+            "ERROR COMMUNICATING WITH AI:",
+            error
         )
 
         conn.close()
 
         return jsonify({
-            "erro": "Erro ao comunicar com a IA"
+            "erro": "Error communicating with AI"
         }), 500
-
-    # ==================================================
-    # LER JSON DA IA
-    # ==================================================
 
     try:
 
-        texto_resposta = resposta.content[0].text
+        response_text = response.content[0].text
 
-        texto_json = limpar_resposta_json(
-            texto_resposta
+        json_text = clean_json_response(
+            response_text
         )
 
-        resultado = json.loads(
-            texto_json
+        result = json.loads(
+            json_text
         )
 
-    except Exception as erro:
+    except Exception as error:
 
         print(
-            "ERRO AO LER A RESPOSTA DA IA:",
-            erro
+            "ERROR PARSING AI RESPONSE:",
+            error
         )
 
         conn.close()
 
         return jsonify({
-            "erro": "Resposta inválida da IA"
+            "erro": "Invalid AI response"
         }), 500
 
-    machine_found = resultado.get(
+    machine_found = result.get(
         "machine_found",
         False
     )
 
-    # ==================================================
-    # NÃO ENCONTROU MÁQUINA
-    #
-    # NÃO GASTA SCAN
-    # ==================================================
-
+    # No machine detected — do not consume a scan credit.
     if not machine_found:
 
         conn.close()
@@ -449,50 +400,42 @@ def scan(user_id):
 
             "scans_restantes": max(
                 0,
-                limite_diario - scans_hoje
+                daily_limit - scans_today
             )
         }), 200
 
-    # ==================================================
-    # DADOS DA MÁQUINA
-    # ==================================================
-
     try:
 
-        machine_name = resultado["machine_name"]
+        machine_name = result["machine_name"]
 
-        muscle_group = resultado["muscle_group"]
+        muscle_group = result["muscle_group"]
 
-        description = resultado["description"]
+        description = result["description"]
 
-        how_to_use = resultado["how_to_use"]
+        how_to_use = result["how_to_use"]
 
-        tips = resultado["tips"]
+        tips = result["tips"]
 
-        confidence = resultado["confidence"]
+        confidence = result["confidence"]
 
-        primary_muscle = resultado["primary_muscle"]
+        primary_muscle = result["primary_muscle"]
 
-        secondary_muscles = resultado[
+        secondary_muscles = result[
             "secondary_muscles"
         ]
 
-    except Exception as erro:
+    except Exception as error:
 
         print(
-            "ERRO AO LER OS DADOS DA MÁQUINA:",
-            erro
+            "ERROR READING MACHINE DATA:",
+            error
         )
 
         conn.close()
 
         return jsonify({
-            "erro": "Dados da máquina inválidos"
+            "erro": "Invalid machine data"
         }), 500
-
-    # ==================================================
-    # GUARDAR SCAN
-    # ==================================================
 
     c.execute(
         """
@@ -562,15 +505,11 @@ def scan(user_id):
 
     conn.close()
 
-    # ==================================================
-    # ATUALIZAR CONTADOR
-    # ==================================================
+    scans_today += 1
 
-    scans_hoje += 1
-
-    scans_restantes = max(
+    scans_remaining = max(
         0,
-        limite_diario - scans_hoje
+        daily_limit - scans_today
     )
 
     return jsonify({
@@ -595,38 +534,30 @@ def scan(user_id):
 
         "scanned_at": scanned_at,
 
-        "scans_restantes": scans_restantes,
+        "scans_restantes": scans_remaining,
 
-        "limite_diario": limite_diario
+        "limite_diario": daily_limit
 
     }), 200
 
-
-# ======================================================
-# SCAN MANUAL
-# ======================================================
 
 @scan_bp.route("/scan/manual", methods=["POST"])
 @token_required
 def scan_manual(user_id):
 
-    dados = request.json or {}
+    data = request.json or {}
 
     machine_name_input = (
-        dados.get("machine_name") or ""
+        data.get("machine_name") or ""
     ).strip()
 
     if not machine_name_input:
 
         return jsonify({
-            "erro": "Nenhum nome de máquina enviado"
+            "erro": "No machine name provided"
         }), 400
 
-    # ==================================================
-    # IDIOMA
-    # ==================================================
-
-    idioma_cliente = (
+    client_language = (
         request.headers
         .get("Accept-Language", "en")
         .split(",")[0]
@@ -635,14 +566,10 @@ def scan_manual(user_id):
         .lower()
     )
 
-    lingua_final = MAPA_LINGUAS.get(
-        idioma_cliente,
+    target_language = LANGUAGE_MAP.get(
+        client_language,
         "English"
     )
-
-    # ==================================================
-    # BD
-    # ==================================================
 
     conn = get_db()
     c = conn.cursor()
@@ -656,19 +583,19 @@ def scan_manual(user_id):
         (user_id,)
     )
 
-    utilizador = c.fetchone()
+    user = c.fetchone()
 
-    if not utilizador:
+    if not user:
 
         conn.close()
 
         return jsonify({
-            "erro": "Utilizador não encontrado"
+            "erro": "User not found"
         }), 404
 
-    is_pro = utilizador[0]
+    is_pro = user[0]
 
-    limite_diario = obter_limite_diario(
+    daily_limit = get_daily_limit(
         user_id,
         is_pro,
         conn
@@ -684,9 +611,9 @@ def scan_manual(user_id):
         (user_id,)
     )
 
-    scans_hoje = c.fetchone()[0]
+    scans_today = c.fetchone()[0]
 
-    if scans_hoje >= limite_diario:
+    if scans_today >= daily_limit:
 
         conn.close()
 
@@ -696,17 +623,13 @@ def scan_manual(user_id):
 
             "scans_restantes": 0,
 
-            "limite_diario": limite_diario
+            "limite_diario": daily_limit
 
         }), 403
 
-    # ==================================================
-    # IA
-    # ==================================================
-
     try:
 
-        resposta = client.messages.create(
+        response = client.messages.create(
 
             model=MODEL,
 
@@ -725,7 +648,7 @@ def scan_manual(user_id):
                             "type": "text",
 
                             "text": (
-                                f'idioma_alvo: "{lingua_final}"\n'
+                                f'idioma_alvo: "{target_language}"\n'
                                 f'nome_escrito_pelo_utilizador: '
                                 f'"{machine_name_input}"'
                             )
@@ -735,59 +658,50 @@ def scan_manual(user_id):
             ]
         )
 
-    except Exception as erro:
+    except Exception as error:
 
         print(
-            "ERRO AO COMUNICAR COM A IA:",
-            erro
+            "ERROR COMMUNICATING WITH AI:",
+            error
         )
 
         conn.close()
 
         return jsonify({
-            "erro": "Erro ao comunicar com a IA"
+            "erro": "Error communicating with AI"
         }), 500
-
-    # ==================================================
-    # JSON
-    # ==================================================
 
     try:
 
-        texto_resposta = resposta.content[0].text
+        response_text = response.content[0].text
 
-        texto_json = limpar_resposta_json(
-            texto_resposta
+        json_text = clean_json_response(
+            response_text
         )
 
-        resultado = json.loads(
-            texto_json
+        result = json.loads(
+            json_text
         )
 
-    except Exception as erro:
+    except Exception as error:
 
         print(
-            "ERRO AO LER A RESPOSTA DA IA:",
-            erro
+            "ERROR PARSING AI RESPONSE:",
+            error
         )
 
         conn.close()
 
         return jsonify({
-            "erro": "Resposta inválida da IA"
+            "erro": "Invalid AI response"
         }), 500
 
-    machine_found = resultado.get(
+    machine_found = result.get(
         "machine_found",
         False
     )
 
-    # ==================================================
-    # MÁQUINA INVÁLIDA
-    #
-    # NÃO GASTA SCAN
-    # ==================================================
-
+    # Unrecognised machine name — do not consume a scan credit.
     if not machine_found:
 
         conn.close()
@@ -803,53 +717,45 @@ def scan_manual(user_id):
 
             "scans_restantes": max(
                 0,
-                limite_diario - scans_hoje
+                daily_limit - scans_today
             )
 
         }), 200
 
-    # ==================================================
-    # DADOS
-    # ==================================================
-
     try:
 
-        machine_name = resultado["machine_name"]
+        machine_name = result["machine_name"]
 
-        muscle_group = resultado["muscle_group"]
+        muscle_group = result["muscle_group"]
 
-        description = resultado["description"]
+        description = result["description"]
 
-        how_to_use = resultado["how_to_use"]
+        how_to_use = result["how_to_use"]
 
-        tips = resultado["tips"]
+        tips = result["tips"]
 
-        confidence = resultado["confidence"]
+        confidence = result["confidence"]
 
-        primary_muscle = resultado[
+        primary_muscle = result[
             "primary_muscle"
         ]
 
-        secondary_muscles = resultado[
+        secondary_muscles = result[
             "secondary_muscles"
         ]
 
-    except Exception as erro:
+    except Exception as error:
 
         print(
-            "ERRO AO LER OS DADOS DA MÁQUINA:",
-            erro
+            "ERROR READING MACHINE DATA:",
+            error
         )
 
         conn.close()
 
         return jsonify({
-            "erro": "Dados da máquina inválidos"
+            "erro": "Invalid machine data"
         }), 500
-
-    # ==================================================
-    # GUARDAR
-    # ==================================================
 
     c.execute(
         """
@@ -919,11 +825,11 @@ def scan_manual(user_id):
 
     conn.close()
 
-    scans_hoje += 1
+    scans_today += 1
 
-    scans_restantes = max(
+    scans_remaining = max(
         0,
-        limite_diario - scans_hoje
+        daily_limit - scans_today
     )
 
     return jsonify({
@@ -948,16 +854,12 @@ def scan_manual(user_id):
 
         "scanned_at": scanned_at,
 
-        "scans_restantes": scans_restantes,
+        "scans_restantes": scans_remaining,
 
-        "limite_diario": limite_diario
+        "limite_diario": daily_limit
 
     }), 200
 
-
-# ======================================================
-# GANHAR +1 SCAN ATRAVÉS DE ANÚNCIO
-# ======================================================
 
 @scan_bp.route("/scan/bonus", methods=["POST"])
 @token_required
@@ -965,10 +867,6 @@ def scan_bonus(user_id):
 
     conn = get_db()
     c = conn.cursor()
-
-    # ==================================================
-    # VERIFICAR UTILIZADOR
-    # ==================================================
 
     c.execute(
         """
@@ -979,68 +877,52 @@ def scan_bonus(user_id):
         (user_id,)
     )
 
-    utilizador = c.fetchone()
+    user = c.fetchone()
 
-    if not utilizador:
+    if not user:
 
         conn.close()
 
         return jsonify({
-            "erro": "Utilizador não encontrado"
+            "erro": "User not found"
         }), 404
 
-    is_pro = utilizador[0]
+    is_pro = user[0]
 
-    # ==================================================
-    # PRO NÃO PRECISA DE ANÚNCIOS
-    # ==================================================
-
+    # Pro accounts already have a high daily limit and don't need ad bonuses.
     if is_pro:
 
         conn.close()
 
         return jsonify({
-            "erro": "Contas Pro já têm 20 scans por dia"
+            "erro": "Pro accounts already have 20 scans per day"
         }), 400
 
-    # ==================================================
-    # BONUS DE HOJE
-    # ==================================================
-
-    bonus_hoje = obter_bonus_hoje(
+    bonus_today = get_bonus_today(
         user_id,
         conn
     )
 
-    # ==================================================
-    # MÁXIMO DE 2 ANÚNCIOS
-    # ==================================================
-
-    if bonus_hoje >= MAX_BONUS_SCANS:
+    if bonus_today >= MAX_BONUS_SCANS:
 
         conn.close()
 
         return jsonify({
 
             "erro": (
-                "Já atingiste os 2 scans "
-                "bónus de hoje"
+                "You have already used today's 2 bonus scans"
             ),
 
-            "bonus_scans_hoje": bonus_hoje,
+            "bonus_scans_hoje": bonus_today,
 
             "limite_diario": (
-                LIMITE_BASE_FREE +
+                BASE_LIMIT_FREE +
                 MAX_BONUS_SCANS
             )
 
         }), 403
 
-    # ==================================================
-    # DAR +1 SCAN
-    # ==================================================
-
-    novo_bonus = bonus_hoje + 1
+    new_bonus = bonus_today + 1
 
     c.execute(
         """
@@ -1050,16 +932,12 @@ def scan_bonus(user_id):
         WHERE id = %s
         """,
         (
-            novo_bonus,
+            new_bonus,
             user_id
         )
     )
 
     conn.commit()
-
-    # ==================================================
-    # CONTAR SCANS
-    # ==================================================
 
     c.execute(
         """
@@ -1071,36 +949,32 @@ def scan_bonus(user_id):
         (user_id,)
     )
 
-    scans_hoje = c.fetchone()[0]
+    scans_today = c.fetchone()[0]
 
     conn.close()
 
-    limite_diario = (
-        LIMITE_BASE_FREE +
-        novo_bonus
+    daily_limit = (
+        BASE_LIMIT_FREE +
+        new_bonus
     )
 
-    scans_restantes = max(
+    scans_remaining = max(
         0,
-        limite_diario - scans_hoje
+        daily_limit - scans_today
     )
 
     return jsonify({
 
         "sucesso": True,
 
-        "bonus_scans_hoje": novo_bonus,
+        "bonus_scans_hoje": new_bonus,
 
-        "limite_diario": limite_diario,
+        "limite_diario": daily_limit,
 
-        "scans_restantes": scans_restantes
+        "scans_restantes": scans_remaining
 
     }), 200
 
-
-# ======================================================
-# DASHBOARD
-# ======================================================
 
 @scan_bp.route("/dashboard", methods=["GET"])
 @token_required
@@ -1108,10 +982,6 @@ def dashboard(user_id):
 
     conn = get_db()
     c = conn.cursor()
-
-    # ==================================================
-    # UTILIZADOR
-    # ==================================================
 
     c.execute(
         """
@@ -1122,31 +992,23 @@ def dashboard(user_id):
         (user_id,)
     )
 
-    utilizador = c.fetchone()
+    user = c.fetchone()
 
-    if not utilizador:
+    if not user:
 
         conn.close()
 
         return jsonify({
-            "erro": "Utilizador não encontrado"
+            "erro": "User not found"
         }), 404
 
-    is_pro = utilizador[0]
+    is_pro = user[0]
 
-    # ==================================================
-    # LIMITE
-    # ==================================================
-
-    limite_diario = obter_limite_diario(
+    daily_limit = get_daily_limit(
         user_id,
         is_pro,
         conn
     )
-
-    # ==================================================
-    # SCANS HOJE
-    # ==================================================
 
     c.execute(
         """
@@ -1158,11 +1020,7 @@ def dashboard(user_id):
         (user_id,)
     )
 
-    scans_hoje = c.fetchone()[0]
-
-    # ==================================================
-    # SCANS SEMANA
-    # ==================================================
+    scans_today = c.fetchone()[0]
 
     c.execute(
         """
@@ -1174,45 +1032,37 @@ def dashboard(user_id):
         (user_id,)
     )
 
-    scans_semana = c.fetchone()[0]
+    scans_week = c.fetchone()[0]
 
-    # ==================================================
-    # BONUS
-    # ==================================================
-
-    bonus_hoje = 0
+    bonus_today = 0
 
     if not is_pro:
 
-        bonus_hoje = obter_bonus_hoje(
+        bonus_today = get_bonus_today(
             user_id,
             conn
         )
 
     conn.close()
 
-    # ==================================================
-    # RESPOSTA
-    # ==================================================
-
     return jsonify({
 
         "scans_restantes": max(
             0,
-            limite_diario - scans_hoje
+            daily_limit - scans_today
         ),
 
-        "scans_hoje": scans_hoje,
+        "scans_hoje": scans_today,
 
-        "scans_semana": scans_semana,
+        "scans_semana": scans_week,
 
-        "limite_diario": limite_diario,
+        "limite_diario": daily_limit,
 
-        "bonus_scans_hoje": bonus_hoje,
+        "bonus_scans_hoje": bonus_today,
 
         "bonus_scans_restantes": max(
             0,
-            MAX_BONUS_SCANS - bonus_hoje
+            MAX_BONUS_SCANS - bonus_today
         ),
 
         "is_pro": bool(is_pro)

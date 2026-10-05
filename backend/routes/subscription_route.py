@@ -11,17 +11,17 @@ subscription_bp = Blueprint("subscription", __name__)
 @token_required
 def verify_subscription(user_id):
     """
-    O frontend chama este endpoint depois de uma compra no RevenueCat.
-    O backend verifica com a API do RevenueCat se o user tem o entitlement
-    'IronEye Pro' ativo e atualiza is_pro na base de dados.
+    The frontend calls this endpoint after a purchase on RevenueCat.
+    The backend verifies with the RevenueCat API whether the user has the
+    'IronEye Pro' entitlement active and updates is_pro in the database.
     """
 
     revenuecat_api_key = os.getenv("REVENUECAT_API_KEY")
 
-    # depois do desenvolvimento alterar isto
+    # Change this after development
     if not revenuecat_api_key:
-        # Se a chave não está configurada, aceitar o pedido
-        # do frontend diretamente (modo desenvolvimento)
+        # If the key is not configured, accept the request
+        # from the frontend directly (development mode)
         conn = get_db()
         c = conn.cursor()
         c.execute("UPDATE users SET is_pro = 1 WHERE id = %s", (user_id,))
@@ -29,9 +29,8 @@ def verify_subscription(user_id):
         conn.close()
         return jsonify({"is_pro": True, "modo": "dev"}), 200
 
-    # Em produção, verificar com a API do RevenueCat
     try:
-        resposta = req_lib.get(
+        response = req_lib.get(
             f"https://api.revenuecat.com/v1/subscribers/{user_id}",
             headers={
                 "Authorization": f"Bearer {revenuecat_api_key}",
@@ -39,18 +38,17 @@ def verify_subscription(user_id):
             }
         )
 
-        if resposta.status_code != 200:
-            print("ERRO RevenueCat API:", resposta.status_code, resposta.text)
-            return jsonify({"erro": "Não foi possível verificar a subscrição"}), 500
+        if response.status_code != 200:
+            print("ERROR RevenueCat API:", response.status_code, response.text)
+            return jsonify({"erro": "Could not verify subscription"}), 500
 
-        dados = resposta.json()
-        subscriber = dados.get("subscriber", {})
+        data = response.json()
+        subscriber = data.get("subscriber", {})
         entitlements = subscriber.get("entitlements", {})
 
         is_pro = "IronEye Pro" in entitlements and \
                  entitlements["IronEye Pro"].get("expires_date") is not None
 
-        # Atualizar na base de dados
         conn = get_db()
         c = conn.cursor()
         c.execute(
@@ -62,6 +60,6 @@ def verify_subscription(user_id):
 
         return jsonify({"is_pro": is_pro}), 200
 
-    except Exception as erro:
-        print("ERRO ao verificar subscrição:", erro)
-        return jsonify({"erro": "Erro ao verificar subscrição"}), 500
+    except Exception as error:
+        print("ERROR verifying subscription:", error)
+        return jsonify({"erro": "Error verifying subscription"}), 500

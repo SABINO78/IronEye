@@ -23,46 +23,23 @@ import {
     RewardedAd,
     RewardedAdEventType,
     AdEventType,
-    TestIds,
 } from "react-native-google-mobile-ads";
 
 import { API_URL } from "../config";
 
 
-/* =====================================================
-   ADMOB
-===================================================== */
-
-// ID REAL DO TEU BLOCO REWARDED
 const ID_BLOCO_AD =
     "ca-app-pub-4830237129231721/7281673300";
 
-// EM PRODUÇÃO
 const AD_UNIT_ID = ID_BLOCO_AD;
 
 
+const CURRENT_LANGUAGE = "en";
 
-
-
-
-/* =====================================================
-   IDIOMA
-===================================================== */
-
-const IDIOMA_ATUAL = "en";
-
-
-/* =====================================================
-   COMPONENTE
-===================================================== */
 
 export default function ScanScreen({ navigation }) {
 
     const insets = useSafeAreaInsets();
-
-    /* =================================================
-       CÂMARA
-    ================================================= */
 
     const [permission, requestPermission] =
         useCameraPermissions();
@@ -70,18 +47,8 @@ export default function ScanScreen({ navigation }) {
     const [cameraRef, setCameraRef] =
         useState(null);
 
-
-    /* =================================================
-       LOADING DO SCAN
-    ================================================= */
-
     const [loading, setLoading] =
         useState(false);
-
-
-    /* =================================================
-       ADMOB STATES
-    ================================================= */
 
     const [adLoaded, setAdLoaded] =
         useState(false);
@@ -89,375 +56,182 @@ export default function ScanScreen({ navigation }) {
     const [adLoading, setAdLoading] =
         useState(false);
 
-
-    /* =================================================
-       CRIAR REWARDED AD
-    ================================================= */
-
     const rewarded = useMemo(() => {
-
-        return RewardedAd.createForAdRequest(
-            AD_UNIT_ID
-        );
-
+        return RewardedAd.createForAdRequest(AD_UNIT_ID);
     }, []);
 
 
-    /* =================================================
-       CARREGAR ANÚNCIO
-    ================================================= */
-
     useEffect(() => {
-
-        console.log(
-            "A carregar anúncio rewarded..."
-        );
-
 
         const unsubscribeLoaded =
             rewarded.addAdEventListener(
                 RewardedAdEventType.LOADED,
                 () => {
-
-                    console.log(
-                        "Anúncio rewarded carregado!"
-                    );
-
                     setAdLoaded(true);
                     setAdLoading(false);
-
                 }
             );
-
 
         const unsubscribeEarned =
             rewarded.addAdEventListener(
                 RewardedAdEventType.EARNED_REWARD,
                 async (reward) => {
-
-                    console.log(
-                        "RECOMPENSA RECEBIDA:",
-                        reward
-                    );
-
-
-                    /*
-                        O utilizador terminou o anúncio.
-
-                        Agora pedimos ao backend
-                        para dar +1 scan.
-                    */
-
-                    await receberBonusScan();
-
+                    await claimBonusScan();
                 }
             );
-
 
         const unsubscribeError =
             rewarded.addAdEventListener(
                 AdEventType.ERROR,
                 (error) => {
-
-                    console.error(
-                        "Erro no anúncio:",
-                        error
-                    );
-
+                    console.error("Ad error:", error);
                     setAdLoaded(false);
                     setAdLoading(false);
-
-
                     Alert.alert(
                         "Error",
                         "Could not load the ad. Please try again."
                     );
-
                 }
             );
 
-
+        // After the ad closes, pre-load the next one so it's ready if the user wants another bonus scan.
         const unsubscribeClosed =
             rewarded.addAdEventListener(
                 AdEventType.CLOSED,
                 () => {
-
-                    console.log(
-                        "Anúncio fechado."
-                    );
-
-
-                    /*
-                        Depois de fechar o anúncio,
-                        carregamos outro.
-
-                        Assim, se o utilizador quiser
-                        ver o segundo anúncio, já temos
-                        outro preparado.
-                    */
-
                     setAdLoaded(false);
-
                     rewarded.load();
-
                 }
             );
 
-
-        // Primeiro carregamento
         rewarded.load();
 
-
-        // Limpar listeners quando sair do ecrã
         return () => {
-
             unsubscribeLoaded();
             unsubscribeEarned();
             unsubscribeError();
             unsubscribeClosed();
-
         };
 
     }, [rewarded]);
 
 
-    /* =================================================
-       RECEBER +1 SCAN
-    ================================================= */
-
-    async function receberBonusScan() {
+    async function claimBonusScan() {
 
         try {
 
             const token =
                 await AsyncStorage.getItem("token");
 
-
             if (!token) {
-
                 Alert.alert(
                     "Session expired",
                     "Please log in again."
                 );
-
                 return;
-
             }
 
-
-            console.log(
-                "A pedir +1 scan ao backend..."
-            );
-
-
-            const resposta =
+            const response =
                 await fetch(
                     `${API_URL}/scan/bonus`,
                     {
                         method: "POST",
-
                         headers: {
-
-                            "Content-Type":
-                                "application/json",
-
-                            "Authorization":
-                                `Bearer ${token}`,
-
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}`,
                         },
-
                     }
                 );
 
-
-            let dados;
-
+            let data;
 
             try {
-
-                dados =
-                    await resposta.json();
-
-            } catch (erro) {
-
-                console.error(
-                    "Resposta inválida do backend:",
-                    erro
-                );
-
+                data = await response.json();
+            } catch (error) {
+                console.error("Invalid backend response:", error);
                 Alert.alert(
                     "Error",
                     "Server returned an invalid response."
                 );
-
                 return;
-
             }
 
-
-            console.log(
-                "Resposta do bonus:",
-                resposta.status,
-                dados
-            );
-
-
-            if (!resposta.ok) {
-
+            if (!response.ok) {
                 Alert.alert(
-
                     "Could not claim scan",
-
-                    dados.erro ||
-                    "Bonus scan could not be assigned."
-
+                    data.erro || "Bonus scan could not be assigned."
                 );
-
                 return;
-
             }
-
-
-            /*
-                O backend confirmou:
-
-                +1 scan
-            */
 
             Alert.alert(
-
                 "🎉 +1 scan!",
-
-                `You now have ${dados.scans_restantes} scans available today.`
-
+                `You now have ${data.scans_restantes} scans available today.`
             );
-
 
         } catch (error) {
-
-            console.error(
-                "Erro ao receber scan bónus:",
-                error
-            );
-
-
+            console.error("Error claiming bonus scan:", error);
             Alert.alert(
                 "Connection error",
                 "Could not communicate with the server."
             );
-
         }
 
     }
 
 
-    /* =================================================
-       MOSTRAR ANÚNCIO
-    ================================================= */
-
-    async function verAnuncio() {
+    async function showAd() {
 
         if (adLoading) {
-
             return;
-
         }
 
-
-        /*
-            Se o anúncio ainda não estiver carregado,
-            tentamos carregá-lo.
-        */
-
+        // If the ad isn't ready yet, trigger a load and inform the user to retry.
         if (!adLoaded) {
-
             setAdLoading(true);
-
-
             Alert.alert(
                 "Preparing ad",
                 "Please wait a moment and try again."
             );
-
-
             rewarded.load();
-
             return;
-
         }
 
-
         try {
-
-            console.log(
-                "A mostrar anúncio rewarded..."
-            );
-
-
             setAdLoading(true);
-
             setAdLoaded(false);
-
-
             await rewarded.show();
-
-
         } catch (error) {
-
-            console.error(
-                "Erro ao mostrar anúncio:",
-                error
-            );
-
-
+            console.error("Error showing ad:", error);
             setAdLoading(false);
             setAdLoaded(false);
-
-
             Alert.alert(
                 "Error",
                 "Could not display the ad."
             );
-
-
-            // Tentar carregar outro
             rewarded.load();
-
         }
 
     }
 
 
-    /* =================================================
-       FALLBACK MANUAL
-    ================================================= */
-
-    function mostrarFallbackManual(mensagem) {
+    function showManualFallback(message) {
 
         Alert.alert(
 
             "Machine not found",
 
-            mensagem ||
-            "No gym machine found in the image.",
+            message || "No gym machine found in the image.",
 
             [
-
                 {
                     text: "Try again",
                     style: "cancel",
                 },
-
                 {
                     text: "Type name",
-
-                    onPress: () =>
-                        navigation.navigate(
-                            "ManualScan"
-                        ),
-
+                    onPress: () => navigation.navigate("ManualScan"),
                 },
-
             ]
 
         );
@@ -465,164 +239,74 @@ export default function ScanScreen({ navigation }) {
     }
 
 
-    /* =================================================
-       TIRAR FOTO
-    ================================================= */
-
-    async function tirarFoto() {
+    async function takePhoto() {
 
         if (!cameraRef || loading) {
-
             return;
-
         }
-
 
         try {
 
             setLoading(true);
 
-
-            /* =========================================
-               TIRAR FOTO
-            ========================================= */
-
-            const foto =
+            const photo =
                 await cameraRef.takePictureAsync({
-
                     base64: true,
-
                     quality: 0.6,
-
                 });
 
-
-            if (!foto || !foto.base64) {
-
+            if (!photo || !photo.base64) {
                 Alert.alert(
                     "Error",
                     "Could not capture photo."
                 );
-
                 return;
-
             }
-
-
-            /* =========================================
-               TOKEN
-            ========================================= */
 
             const token =
                 await AsyncStorage.getItem("token");
 
-
             if (!token) {
-
                 Alert.alert(
                     "Session expired",
                     "Please log in again."
                 );
-
                 return;
-
             }
 
-
-            console.log(
-                "A enviar fotografia para:",
-                `${API_URL}/scan`
-            );
-
-
-            /* =========================================
-               PEDIR SCAN AO BACKEND
-            ========================================= */
-
-            const resposta =
+            const response =
                 await fetch(
                     `${API_URL}/scan`,
                     {
-
                         method: "POST",
-
                         headers: {
-
-                            "Content-Type":
-                                "application/json",
-
-                            "Authorization":
-                                `Bearer ${token}`,
-
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}`,
                         },
-
                         body: JSON.stringify({
-
-                            imagem:
-                                foto.base64,
-
-                            idioma:
-                                IDIOMA_ATUAL,
-
+                            imagem: photo.base64,
+                            idioma: CURRENT_LANGUAGE,
                         }),
-
                     }
                 );
 
-
-            /* =========================================
-               JSON
-            ========================================= */
-
-            let dados;
-
+            let data;
 
             try {
-
-                dados =
-                    await resposta.json();
-
-            } catch (erro) {
-
-                console.error(
-                    "O servidor não devolveu JSON:",
-                    erro
-                );
-
+                data = await response.json();
+            } catch (error) {
+                console.error("Server did not return JSON:", error);
                 Alert.alert(
                     "Error",
                     "Server returned an invalid response."
                 );
-
                 return;
-
             }
 
-
-            console.log(
-                "Resposta do servidor:",
-                resposta.status,
-                dados
-            );
-
-
-            /* =========================================
-               LIMITE ATINGIDO
-            ========================================= */
-
             if (
-                resposta.status === 403 &&
-                dados.erro ===
-                "Limite diário atingido"
+                response.status === 403 &&
+                data.erro === "Limite diário atingido"
             ) {
-
-                /*
-                    O utilizador já gastou
-                    todos os scans disponíveis.
-
-                    Agora damos a opção de
-                    ver um anúncio.
-                */
 
                 Alert.alert(
 
@@ -631,119 +315,53 @@ export default function ScanScreen({ navigation }) {
                     "You have used all your scans for today.",
 
                     [
-
                         {
                             text: "Close",
                             style: "cancel",
                         },
-
                         {
                             text: "📺 Watch ad +1 scan",
-
-                            onPress:
-                                verAnuncio,
-
+                            onPress: showAd,
                         },
-
                     ]
 
                 );
 
-
                 return;
 
             }
 
-
-            /* =========================================
-               OUTROS ERROS
-            ========================================= */
-
-            if (!resposta.ok) {
-
+            if (!response.ok) {
                 Alert.alert(
-
                     "Error",
-
-                    dados.erro ||
-                    "Could not analyze the image."
-
+                    data.erro || "Could not analyze the image."
                 );
-
                 return;
-
             }
 
-
-            /* =========================================
-               MÁQUINA NÃO ENCONTRADA
-            ========================================= */
-
-            if (
-                dados.machine_found === false
-            ) {
-
-                mostrarFallbackManual(
-                    dados.erro
-                );
-
+            if (data.machine_found === false) {
+                showManualFallback(data.erro);
                 return;
-
             }
 
-
-            /* =========================================
-               RESPOSTA INVÁLIDA
-            ========================================= */
-
-            if (
-                dados.machine_found !== true
-            ) {
-
+            if (data.machine_found !== true) {
                 Alert.alert(
-
                     "Error",
-
                     "AI returned an unexpected response."
-
                 );
-
                 return;
-
             }
 
-
-            /* =========================================
-               IR PARA DETALHES
-            ========================================= */
-
-            navigation.replace(
-
-                "ScanDetails",
-
-                {
-                    scan: dados
-                }
-
-            );
-
+            navigation.replace("ScanDetails", { scan: data });
 
         } catch (error) {
 
-            console.error(
-                "Erro no scan:",
-                error
-            );
-
+            console.error("Scan error:", error);
 
             Alert.alert(
-
                 "Connection error",
-
                 "Could not communicate with the server."
-
             );
-
 
         } finally {
 
@@ -754,93 +372,38 @@ export default function ScanScreen({ navigation }) {
     }
 
 
-    /* =================================================
-       PERMISSÃO DA CÂMARA
-    ================================================= */
-
     if (!permission) {
-
         return (
-
-            <View
-                style={
-                    styles.permissionContainer
-                }
-            >
-
-                <ActivityIndicator
-                    size="large"
-                    color="#FF8C00"
-                />
-
+            <View style={styles.permissionContainer}>
+                <ActivityIndicator size="large" color="#FF8C00" />
             </View>
-
         );
-
     }
-
 
     if (!permission.granted) {
-
         return (
-
-            <View
-                style={
-                    styles.permissionContainer
-                }
-            >
-
-                <Text
-                    style={
-                        styles.permissionText
-                    }
-                >
-
+            <View style={styles.permissionContainer}>
+                <Text style={styles.permissionText}>
                     IronEye requires camera access.
-
                 </Text>
-
-
                 <TouchableOpacity
-
-                    style={
-                        styles.button
-                    }
-
-                    onPress={
-                        requestPermission
-                    }
-
+                    style={styles.button}
+                    onPress={requestPermission}
                 >
-
-                    <Text
-                        style={
-                            styles.buttonText
-                        }
-                    >
-
+                    <Text style={styles.buttonText}>
                         Allow camera
-
                     </Text>
-
                 </TouchableOpacity>
-
             </View>
-
         );
-
     }
 
-
-    /* =================================================
-       UI
-    ================================================= */
 
     return (
 
         <View style={styles.container}>
 
-            <TouchableOpacity 
+            <TouchableOpacity
                 style={[styles.backButton, { top: Math.max(insets.top, 20) + 10 }]}
                 onPress={() => navigation.goBack()}
             >
@@ -848,24 +411,17 @@ export default function ScanScreen({ navigation }) {
             </TouchableOpacity>
 
             <CameraView
-
-                ref={(ref) =>
-                    setCameraRef(ref)
-                }
-
+                ref={(ref) => setCameraRef(ref)}
                 style={styles.camera}
-
                 facing="back"
-
             />
-
 
             <View
                 style={[
                     styles.bottomContainer,
-                    { 
+                    {
                         paddingBottom: insets.bottom,
-                        height: 180 + insets.bottom 
+                        height: 180 + insets.bottom
                     }
                 ]}
             >
@@ -873,88 +429,35 @@ export default function ScanScreen({ navigation }) {
                 {loading ? (
 
                     <>
-
-                        <ActivityIndicator
-                            size="large"
-                            color="#FF8C00"
-                        />
-
-                        <Text
-                            style={
-                                styles.loadingText
-                            }
-                        >
-
+                        <ActivityIndicator size="large" color="#FF8C00" />
+                        <Text style={styles.loadingText}>
                             AI is analyzing the machine...
-
                         </Text>
-
                     </>
 
                 ) : (
 
                     <TouchableOpacity
-
-                        style={
-                            styles.scanButton
-                        }
-
-                        onPress={
-                            tirarFoto
-                        }
-
+                        style={styles.scanButton}
+                        onPress={takePhoto}
                     >
-
-                        <View
-                            style={
-                                styles.innerButton
-                            }
-                        />
-
+                        <View style={styles.innerButton} />
                     </TouchableOpacity>
 
                 )}
 
-
                 <TouchableOpacity
-
-                    onPress={() =>
-                        navigation.navigate(
-                            "ManualScan"
-                        )
-                    }
-
+                    onPress={() => navigation.navigate("ManualScan")}
                 >
-
-                    <Text
-                        style={
-                            styles.manualLink
-                        }
-                    >
-
+                    <Text style={styles.manualLink}>
                         Type name manually
-
                     </Text>
-
                 </TouchableOpacity>
 
-
-                {/* =====================================
-                    ESTADO DO ANÚNCIO
-                ===================================== */}
-
                 {adLoading && (
-
-                    <Text
-                        style={
-                            styles.adStatus
-                        }
-                    >
-
+                    <Text style={styles.adStatus}>
                         Preparing ad...
-
                     </Text>
-
                 )}
 
             </View>
@@ -965,10 +468,6 @@ export default function ScanScreen({ navigation }) {
 
 }
 
-
-/* =====================================================
-   STYLES
-===================================================== */
 
 const styles = StyleSheet.create({
 
@@ -993,14 +492,12 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
-
     bottomContainer: {
         height: 180,
         backgroundColor: "#0A0A0A",
         alignItems: "center",
         justifyContent: "center",
     },
-
 
     scanButton: {
         width: 80,
@@ -1011,7 +508,6 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
 
-
     innerButton: {
         width: 65,
         height: 65,
@@ -1019,13 +515,11 @@ const styles = StyleSheet.create({
         backgroundColor: "#FFF",
     },
 
-
     loadingText: {
         color: "#FFF",
         fontSize: 16,
         marginTop: 15,
     },
-
 
     manualLink: {
         color: "#FF8C00",
@@ -1034,13 +528,11 @@ const styles = StyleSheet.create({
         textDecorationLine: "underline",
     },
 
-
     adStatus: {
         color: "#AAA",
         fontSize: 12,
         marginTop: 8,
     },
-
 
     permissionContainer: {
         flex: 1,
@@ -1050,7 +542,6 @@ const styles = StyleSheet.create({
         padding: 30,
     },
 
-
     permissionText: {
         color: "#FFF",
         fontSize: 18,
@@ -1058,14 +549,12 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
 
-
     button: {
         backgroundColor: "#FF8C00",
         paddingHorizontal: 25,
         paddingVertical: 15,
         borderRadius: 10,
     },
-
 
     buttonText: {
         color: "#FFF",

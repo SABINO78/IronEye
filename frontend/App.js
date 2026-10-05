@@ -18,11 +18,11 @@ import ManualScanScreen from "./screens/ManualScanScreen"
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const [carregando, setCarregando] = useState(true);
-  const [isLogado, setIsLogado] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    verificarLogin();
+    checkLogin();
   }, []);
 
   useEffect(() => {
@@ -33,18 +33,18 @@ export default function App() {
     }
   }, []);
 
-  async function verificarLogin() {
+  async function checkLogin() {
     try {
       const token = await AsyncStorage.getItem("token");
-      setIsLogado(token !== null);
+      setIsLoggedIn(token !== null);
     } catch (error) {
-      console.error("Erro ao verificar login:", error);
+      console.error("Error checking login:", error);
     } finally {
-      setCarregando(false);
+      setLoading(false);
     }
   }
 
-  if (carregando) {
+  if (loading) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#FF7A1A" />
@@ -56,13 +56,13 @@ export default function App() {
     <NavigationContainer>
       <StatusBar style="auto" />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isLogado ? (
+        {isLoggedIn ? (
           <>
             <Stack.Screen name="Home">
-              {(props) => <HomeScreen {...props} onLogout={() => setIsLogado(false)} />}
+              {(props) => <HomeScreen {...props} onLogout={() => setIsLoggedIn(false)} />}
             </Stack.Screen>
             <Stack.Screen name="Profile">
-              {(props) => <ProfileScreen {...props} onLogout={() => setIsLogado(false)} />}
+              {(props) => <ProfileScreen {...props} onLogout={() => setIsLoggedIn(false)} />}
             </Stack.Screen>
             <Stack.Screen name="Pro" component={ProScreen} />
             <Stack.Screen name="History" component={HistoryScreen} />
@@ -72,7 +72,7 @@ export default function App() {
           </>
         ) : (
           <Stack.Screen name="Auth">
-            {(props) => <AuthScreen {...props} onLogin={() => setIsLogado(true)} />}
+            {(props) => <AuthScreen {...props} onLogin={() => setIsLoggedIn(true)} />}
           </Stack.Screen>
         )}
       </Stack.Navigator>
