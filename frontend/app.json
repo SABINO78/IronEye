@@ -14,9 +14,8 @@
       "package": "com.sabino.ironeye",
       "versionCode": 4,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FF6F00",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       }
     },
@@ -31,7 +30,15 @@
           "androidAppId": "ca-app-pub-4830237129231721~1426711390"
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#FF6F00",
+          "imageWidth": 200
+        }
+      ]
     ],
     "extra": {
       "eas": {
